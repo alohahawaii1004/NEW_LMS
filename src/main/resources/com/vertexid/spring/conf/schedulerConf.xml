@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <description>
+        <!--
+          ~ Copyright 2022 JAYU.space
+          ~
+          ~ Licensed under the Apache License, Version 2.0 (the "License");
+          ~ you may not use this file except in compliance with the License.
+          ~ You may obtain a copy of the License at
+          ~
+          ~ http://www.apache.org/licenses/LICENSE-2.0
+          ~
+          ~ Unless required by applicable law or agreed to in writing, software
+          ~ distributed under the License is distributed on an "AS IS" BASIS,
+          ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+          ~ See the License for the specific language governing permissions and
+          ~ limitations under the License.
+          -->
+        <![CDATA[
+            Scheduler 설정
+                - quartz 설정
+        ]]>
+    </description>
+
+    <!-- Mail jobs -->
+    <bean id="mailBatchJob" class="com.vertexid.support.scheduler.MailBatchJobSvc">
+        <description><![CDATA[
+            메일발송 일괄 Job 서비스
+        ]]></description>
+    </bean>
+
+    <!-- Mail jobs detail -->
+    <bean id="mailJobDetail" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <description><![CDATA[
+            mail 일괄전송 Job 상세
+        ]]></description>
+        <property name="targetObject" ref="mailBatchJob"/>
+        <property name="targetMethod" value="execBatchJob"/>
+        <property name="concurrent" value="false"/>
+    </bean>
+    <!-- Mail jobs trigger -->
+    <bean id="mailBatchJobTrigger" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <description><![CDATA[
+            mail 일괄전송 Job 트리거
+            크론표현식(매3분마다): 0 0/3 * * * ?
+        ]]></description>
+        <property name="jobDetail" ref="mailJobDetail"/>
+        <property name="startDelay" value="3000"/>
+        <property name="cronExpression" value="0 0/1 * * * ?"/>
+    </bean>
+
+    <!-- DayBatch jobs -->
+    <bean id="dayBatchJob" class="com.vertexid.support.batch.StatsFactJobSvc">
+        <description><![CDATA[
+            일배치 Job 서비스
+        ]]></description>
+    </bean>
+    <!-- Day jobs detail -->
+    <bean id="dayJobDetail" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <description><![CDATA[
+            일배치 Job 상세
+        ]]></description>
+        <property name="targetObject" ref="dayBatchJob"/>
+        <property name="targetMethod" value="execBatchJob"/>
+        <property name="concurrent" value="false"/>
+    </bean>
+    <bean id="dayBatchJobTrigger" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <description><![CDATA[
+            일배치 Job 트리거
+            크론표현식(매일 05시): 0 0 5 * * ?
+        ]]></description>
+        <property name="jobDetail" ref="dayJobDetail"/>
+        <property name="startDelay" value="3600"/>
+        <property name="cronExpression" value="0 0 5 * * ?"/>
+    </bean>
+
+    <!-- scheduler -->
+    <bean id="schedulerFactoryBean"
+          class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+        <description><![CDATA[
+            스케줄러 설정
+        ]]></description>
+        <property name="triggers">
+            <list>
+                <ref bean="mailBatchJobTrigger"/>
+                <ref bean="dayBatchJobTrigger"/>
+            </list>
+        </property>
+    </bean>
+
+</beans>
+

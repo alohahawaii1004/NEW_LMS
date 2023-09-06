@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd" >
+<properties>
+    <comment>
+        <!--
+          ~ Copyright 2022 JAYU.space
+          ~
+          ~ Licensed under the Apache License, Version 2.0 (the "License");
+          ~ you may not use this file except in compliance with the License.
+          ~ You may obtain a copy of the License at
+          ~
+          ~ http://www.apache.org/licenses/LICENSE-2.0
+          ~
+          ~ Unless required by applicable law or agreed to in writing, software
+          ~ distributed under the License is distributed on an "AS IS" BASIS,
+          ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+          ~ See the License for the specific language governing permissions and
+          ~ limitations under the License.
+          -->
+        Common Properties
+    </comment>
+
+    <!-- Base : 시스템 이전의 기본 -->
+    <entry key="base.srcRootPath">C:\Workspace\CMS</entry>
+    <entry key="base.solution">CMS</entry>
+    <entry key="base.defaultContentUrl">/CMS</entry>
+
+
+    <!-- Common : 공통 속성 -->
+    <entry key="cmm.vo.toString.style">SHORT_PREFIX_STYLE</entry>
+    <entry key="cmm.lang.default">KO</entry>
+    <entry key="cmm.lang.charSet">UTF-8</entry>
+    <entry key="cmm.paging.default.rowCount">20</entry>
+    <entry key="cmm.paging.default.pageCount">10</entry>
+    <entry key="cmm.webEditor"></entry>
+
+    <!-- System Properties -->
+    <entry key="sys.operation.mode">LOCAL</entry>
+    <entry key="sys.name">SUPPORT</entry>
+    <entry key="sys.title.ko">Paragon 고객지원 시스템</entry>
+    <entry key="sys.title.en">Paragon Customer Support System</entry>
+    <entry key="sys.organization.ko">버텍스아이디</entry>
+    <entry key="sys.organization.en">VertexID</entry>
+    <entry key="sys.admin.name">System Admin</entry>
+    <entry key="sys.admin.email">service@vertexid.com</entry>
+    <entry key="sys.ip">127.0.0.1</entry>
+    <entry key="sys.port"></entry>
+    <entry key="sys.protocol">http://</entry>
+    <entry key="sys.domainName">localhost</entry>
+    <entry key="sys.contextPath"></entry>
+
+    <!-- DB Properties -->
+    <entry key="db.mybatis.mapper.root">com.vertexid</entry>
+    <entry key="db.mybatis.mapper.vendorRoot"></entry>
+
+    <!-- DB Connection Properties -->
+    <!--
+    db.%CON_NAME%.dbms
+    db.%CON_NAME%.jndi
+    db.%CON_NAME%.driverClass
+    db.%CON_NAME%.url
+    db.%CON_NAME%.username
+    db.%CON_NAME%.password
+    -->
+    <entry key="db.base.dbms">mariadb</entry>
+    <entry key="db.base.driverClass">org.mariadb.jdbc.Driver</entry>
+    <entry key="db.base.url">jdbc:mariadb://172.30.1.98:3306/LMS?autoReconnect=true</entry> 
+     <entry key="db.base.username">root</entry>
+     <entry key="db.base.password">vertex!id@000</entry> 
+   
+    <!-- Attach -->
+    <entry key="attach.saveRootPath">C:/Workspace/LOG_ATT/attachment</entry>
+    <entry key="attach.saveTempPath">C:/Workspace/LOG_ATT/attachment/TMP</entry>
+    <entry key="attach.default.maxFileSize">1048576</entry>
+    <entry key="attach.default.maxFileCount">20</entry>
+    <entry key="attach.default.allowExt">txt;pdf;xls;xlsx;xlsm;xps;ppt;pptx;doc;docx;hwp;rtf;jpg;jpeg;gif;png;tif;zip;eml;tar;tgz;gz;xz;7z;rar;lzh</entry>
+    <entry key="attach.default.denyExt"></entry>
+
+    <entry key="drm.useYn">N</entry>
+    <entry key="drm.FsdinitPath"></entry>
+
+    <!-- Mail -->
+    <entry key="mail.useYn">Y</entry>
+    <entry key="mail.svc.url"></entry>
+    <entry key="mail.svc.token"></entry>
+    <entry key="mail.smtp.host">sd.vertexid.com</entry>
+    <entry key="mail.smtp.port">25</entry>
+    <entry key="mail.smtp.username"></entry>
+    <entry key="mail.smtp.password"></entry>
+    <entry key="mail.smtp.maxFileSize">10485760</entry>
+    <entry key="mail.smtp.tlsYn">N</entry>
+    <entry key="mail.smtp.sslYn">N</entry>
+
+    <!-- SSO -->
+    <entry key="sso.useYn">N</entry>
+    <entry key="sso.svc.url"></entry>
+    <entry key="sso.svc.key"></entry>
+
+    <!-- LDAP -->
+    <entry key="ldap.useYn">N</entry>
+    <entry key="ldap.url"></entry>
+    <entry key="ldap.username"></entry>
+    <entry key="ldap.password"></entry>
+    <entry key="ldap.domain"></entry>
+    <entry key="ldap.baseDn"></entry>
+
+    <!-- Approval -->
+    <entry key="aprv.useYn">N</entry>
+    <entry key="aprv.defaultLine.useYn">N</entry>
+    <entry key="aprv.preText"></entry>
+    <entry key="aprv.url"></entry>
+    <entry key="aprv.service.id"></entry>
+    <entry key="aprv.service.url"></entry>
+    <entry key="aprv.system.id"></entry>
+    <entry key="aprv.system.code"></entry>
+
+    <!-- PDF -->
+    <entry key="pdf.convertYn">N</entry>
+    <entry key="pdf.doc2pdf.url"></entry>
+    <entry key="pdf.split.url"></entry>
+    <entry key="pdf.watermark.position"></entry>
+
+    <!-- LMS function -->
+    <entry key="fnc.quitMenu.useYn">Y</entry>
+    <entry key="fnc.multiAuthLogin.useYn">N</entry>
+    <entry key="fnc.masterSearch.useYn">N</entry>
+    <entry key="fnc.changeLocale.useYn">N</entry>
+    <entry key="fnc.fileHistroy.useYn">N</entry>
+    <entry key="fnc.batchDownload.useYn">N</entry>
+    <entry key="fnc.listSorting.useYn">N</entry>
+    <entry key="fnc.checkSysAdminLoginIp.useYn">N</entry>
+    <entry key="fnc.schPwd.useYn">N</entry>
+    <entry key="fnc.userNameDisplay.useYn">N</entry>
+
+     <!-- System Security -->
+    <!--[CDATA[
+        [System Security]
+            자체 보안 필터 사용시 적용
+
+            applicationConf.xml에 사용자 정의 Security 설정 추가필요
+
+            * security.useYn: Y: 사용, Other: 미사용
+              web.xml, applicationConf.xml 에 설정이 동반되어야 한다.
+            * security.ignoreURIs: 검사 예외 URI
+                기본 URI 들()은 예외 처리 되어 있고 그외 예외 처리할 URI를 줄바꿈으로 구분해서 설정
+                url은 ANT URL 패턴형식으로 작성한다.
+            * security.loginURI: login form URI(기본 /login)
+            * security.loginProcURI: login process URI(기본 /login/proc)
+                - 로그인 처리시 해당 URI로 자동 redirec 되며
+                  security.loginProvider.class 에 설정된 class 에서 처리된다.
+            * security.expiredURI: session expired URI(기본 /login)
+            * security.defaultURI: 기본 URI(기본 /main)
+            * security.logoutURI: logout URI(기본 /logout)
+            * security.idParamName: ID 파라메터 명
+            * security.pwParamName: PW 파라메터 명
+            * security.csrfYn: CSRF Token 사용여부
+            * security.allowIfAllAbstainDecisions: 보류건 허가여부(true: 허가, other: 불가)
+                                                   Tip:최초 세팅시에는 허가로 놓고 개발 중반이후~운영 에는 불가로 운영
+    ]]-->
+    <entry key="security.useYn">Y</entry>
+    <entry key="security.ignoreURIs">
+        /favicon.ico
+        /css/**
+        /img/**
+        /js/vendor/**
+        /js/plugins.js
+        /js/module/main/login.js
+        /rsa/**
+        /_images/**
+        /error/**
+        /WEB-INF/tiles/**
+        /rest/**
+        /main/ssoLogin2.do
+    </entry>
+    <entry key="security.loginURI">/login.do</entry>
+    <entry key="security.loginProcURI">/login/proc</entry>
+    <entry key="security.expiredURI">/login.do</entry>
+    <entry key="security.defaultURI">/main/main</entry>
+    <entry key="security.logoutURI">/logout</entry>
+    <entry key="security.idParamName">loginId</entry>
+    <entry key="security.pwParamName">loginPwd</entry>
+    <entry key="security.csrfYn">Y</entry>
+    <entry key="security.csrf.ignoreURIs">
+        /login/proc
+        /editor/**
+    </entry>
+    <entry key="security.allowIfAllAbstainDecisions">false</entry>
+    <entry key="security.maxSession">-1</entry>
+    <entry key="security.privateKey">MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAKb28EVeMxR9j6FsoMFmrV13bNzktmtgcvYlnXJhs2N3iwugYzl3TNEFtjD30YyVVOw+zdw+ow047j+6X7qRynAq65LzOXaOdd5SC5EqZP1UacyblO1xdAjCO5EyBGQsP/o+oERlrLmsQQYs6UyU6bx3BqjS4R6kEgMyqPmhLuklAgMBAAECgYBWSTXg047YXw90YBwv9u1PaWGkQrqXgW/ID6Zvr1gy5lvAdXHyB9p2B1qhseDko2QQ92ASG3jOY4aU/q9sTt3sAnNWZPBjw7NfFSHZWCCmD1prWhUvOUVVLEzd2bc6n51bGIXWSd3i2AvymWBjyNhhsyhqjhTvY/XKxhdnYTuMAQJBAPmellM6d6A0oZSzYvP9NFkyoiQQgetiRWDQG9tbII+6xehwRy1rNDQ0ka2tXymC/KZRZqqTBkc2RQV0TTtPNiUCQQCrO31veM+4KjkhYdYzfOUH8MC4G8MhmN5f9e335EVhm/kSNN2mZcgmnVUJMznwu485lPKnK93WeUuDtjsPevcBAkEA2avGEIuyl1xt7prDVlpdlM7Hf0V51YXbVAIF2LHNYiiPvhJyrxOF8WRKCLZffnZ/1JS1P1d4KQ8U/x2c33RClQJASzH4x7caIRoJtKsuUbYLLg1/1Fn8uwhSv3lUY4QPI+pG2sP0glo4Jxz4du3UB++V2gea9+a/qKvjiZfBH+80AQJBAMQ7ZMkaBPja/rBXTkuCBvzxerTg3lvEvFordbZNS5a7oxNOFv4kAilMQtQ3qrLsiyFxknG7slBBUMxeLTUKihA=</entry>
+    <entry key="security.publicKey">MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCm9vBFXjMUfY+hbKDBZq1dd2zc5LZrYHL2JZ1yYbNjd4sLoGM5d0zRBbYw99GMlVTsPs3cPqMNOO4/ul+6kcpwKuuS8zl2jnXeUguRKmT9VGnMm5TtcXQIwjuRMgRkLD/6PqBEZay5rEEGLOlMlOm8dwao0uEepBIDMqj5oS7pJQIDAQAB</entry>
+
+    <!-- batch job yn : to Database? -->
+    <entry key="batch.yn">N</entry>
+</properties>

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<mapper namespace="com.vertexid.paragon.mail.Mail.mariadb">
+    <insert id="insert" parameterType="com.vertexid.paragon.mail.MailDTO" >
+        INSERT INTO T_SYS_MAIL_MAS(
+            EMAIL_UID
+            ,REL_UID
+            ,SOL_MAS_UID
+            ,STU_CD
+            ,STU_DTL
+            ,SEND
+            ,REC
+            ,REF
+            ,SECU_REF
+            ,TIT
+            ,CONTENT
+            ,FILE_REL_UID
+            ,FILE_TP_CD
+            ,SEND_DTE
+            ,SEND_YN
+            ,HTML_USE_YN
+            ,RESV_DTE
+            ,REG_LOGIN_ID
+            ,REG_DTE
+            ,UPT_LOGIN_ID
+            ,UPT_DTE
+        )VALUES(
+            #{emailUid}
+            ,#{relUid}
+            ,#{solMasUid}
+            ,#{stuCd}
+            ,#{stuDtl}
+            ,#{send}
+            ,#{rec}
+            ,#{ref}
+            ,#{secuRef}
+            ,#{tit}
+            ,#{content}
+            ,#{fileRelUid}
+            ,#{fileTpCd}
+            ,#{sendDte}
+            ,#{sendYn}
+            ,#{htmlUseYn}
+            ,#{resvDte}
+            ,#{loginInfo.loginId}
+            ,NOW()
+            ,#{loginInfo.loginId}
+            ,NOW()
+        )
+    </insert>
+    <update id="update" parameterType="com.vertexid.paragon.mail.MailDTO" >
+        UPDATE T_SYS_MAIL_MAS
+        SET SEND_DTE = CURRENT_TIMESTAMP
+        <if test="sendYn != null and sendYn != ''">
+            , SEND_YN = #{sendYn}
+        </if>
+        WHERE EMAIL_UID = #{emailUid}
+    </update>
+
+    <!-- 발송대상 메일 리스트 -->
+    <select id="getMailList" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT a.*
+        FROM (
+            SELECT sm.*
+                , ROW_NUMBER() OVER(ORDER BY sm.REG_DTE DESC) RN
+            FROM T_SYS_MAIL_MAS sm
+            <where>
+            AND IFNULL(sm.SEND_YN, 'N') = #{sendYn}
+            </where>
+        ) a
+        <where>
+            AND a.RN <![CDATA[ <= ]]> 30
+        </where>
+    </select>
+
+    <!--     파일리스트 -->
+    <select id="fileList" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT
+            V1.*
+        FROM T_SYS_ATCH_FILE V1
+        <where>
+            <if test="relUid != null and !relUid.equals('') ">
+                AND V1.REL_UID = #{relUid}
+            </if>
+            <if test="atchUid != null and !atchUid.equals('') ">
+                AND V1.ATCH_UID  = #{atchUid}
+            </if>
+            <if test="solMasUid != null and !solMasUid.equals('') ">
+                AND V1.SOL_MAS_UID  = #{solMasUid}
+            </if>
+            <if test="fileTpCd != null and !fileTpCd.equals('') ">
+                AND V1.FILE_TP_CD  = #{fileTpCd}
+            </if>
+            <if test="useYn != null and !useYn.equals('') ">
+                AND V1.USE_YN  = #{useYn}
+            </if>
+            <if test="arrRelUid != null and arrRelUid.length > 0">
+                AND  V1.REL_UID IN
+                <foreach collection="arrRelUid" item="item" open="(" separator="," close=")" index="index">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <delete id="deleteUnsentMail" parameterType="map">
+        DELETE FROM T_SYS_MAIL_MAS
+        <where>
+            AND IFNULL(SEND_YN, 'N') = 'N'
+            AND SOL_MAS_UID = #{solMasUid}
+            <if test='@org.apache.commons.lang3.StringUtils@isNotBlank(relUid)'>
+                AND REL_UID = #{relUid}
+            </if>
+        </where>
+    </delete>
+</mapper>

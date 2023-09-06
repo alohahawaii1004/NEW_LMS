@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<mapper namespace="com.vertexid.viself.auth.AuthMember.mariadb">
+    <select id="list" parameterType="map" resultType="paramMap" fetchSize="1000">
+		SELECT
+		SU.LOGIN_ID
+		--			, SU.USER_NO
+		--			, SU.DEPT_CD
+		-- 			, SU.LOGIN_PWD
+		, SU.NM_KO
+		, SU.NM_EN
+		, SU.NM_JA
+		, SU.NM_ZH
+		-- 			, SU.DSP_NM_KO
+		-- 			, SU.DSP_NM_EN
+		-- 			, SU.DSP_NM_JA
+		-- 			, SU.DSP_NM_ZH
+		, SU.EMAIL
+		-- 			, SU.TEL_NO
+		-- 			, SU.MOBILE_NO
+		-- 			, SU.POS_CD
+		-- 			, SU.POS_LANG_CD
+		-- 			, SU.DUTY_CD
+		-- 			, SU.DUTY_LANG_CD
+		, SU.USER_TP_CD
+		, SU.USER_TP_LANG_CD
+		, SU.ORG_NM_KO DEPT_NM_KO
+		-- 			, SU.DEPT_NM_EN
+		-- 			, SU.DEPT_NM_JA
+		-- 			, SU.DEPT_NM_ZH
+		-- 			, SU.DEPT_CD_PATH
+		-- 			, SU.DEPT_NM_PATH_KO
+		-- 			, SU.DEPT_NM_PATH_EN
+		-- 			, SU.DEPT_NM_PATH_JA
+		-- 			, SU.DEPT_NM_PATH_ZH
+		-- 			, SU.CHIEF_YN
+		, SU.SITE_LOCALE
+		-- 			, SU.NAT_CD
+		-- 			, SU.NAT_NM
+		-- 			, SU.CORP_CD
+		-- 			, SU.CORP_NM
+		, SU.USE_YN
+		, F_SYS_CD_ABB_LANG('USER_YN',SU.USE_YN) STU_LANG_CD
+		, AM.AUTH_CD
+		, AM.MBR_TP_CD
+		, AM.MBR_ID
+		, SU.NM_KO AS USER_NM
+		, ROW_NUMBER() OVER(ORDER BY SU.ORG_ID_PATH asc, SU.NM_KO) RN
+		FROM T_SYS_AUTH_MEMBER AM
+			INNER JOIN V_SYS_USER SU
+				ON AM.MBR_ID = SU.LOGIN_ID
+		<where>
+			<if test="authCd != null and !authCd.equals('')">
+	           	AND AM.AUTH_CD  = #{authCd}
+			</if>
+			<if test="mbrId != null and !mbrId.equals('')">
+	           	AND AM.MBR_ID  = #{mbrId}
+			</if>
+			<if test="mbrTpCd != null and !mbrTpCd.equals('')">
+	           	AND AM.MBR_TP_CD  = #{mbrTpCd}
+			</if>
+		</where>
+    </select>
+
+	<select id="getAuthorities" parameterType="map" resultType="paramMap" fetchSize="1000">
+		SELECT
+			AM.*
+		FROM T_SYS_AUTH_MEMBER AM
+			INNER JOIN V_SYS_USER SU
+				ON AM.MBR_ID = SU.LOGIN_ID
+		<where>
+			<if test="authCd != null and !authCd.equals('')">
+				AND AM.AUTH_CD  = #{authCd}
+			</if>
+			<if test="authMemberId != null and !authMemberId.equals('')">
+				AND AM.MBR_ID  = #{authMemberId}
+			</if>
+			<if test="authMemberTpCd != null and !authMemberTpCd.equals('')">
+				AND AM.MBR_TP_CD  = #{authMemberTpCd}
+			</if>
+		</where>
+	</select>
+
+    <insert id="insertAuthUser" parameterType="com.vertexid.viself.auth.AuthMemberDTO">
+		INSERT INTO T_SYS_AUTH_MEMBER(
+			AUTH_CD
+			, MBR_TP_CD
+			, MBR_ID
+			, USER_NM
+			, REG_LOGIN_ID
+			, REG_DTE
+			, UPT_LOGIN_ID
+			, UPT_DTE
+		)VALUES(
+			#{authCd}
+			, #{mbrTpCd}
+			, #{mbrId}
+			, #{userNm}
+			, #{loginInfo.loginId}
+			, NOW()
+			, #{loginInfo.loginId}
+			, NOW()
+		)
+    </insert>
+
+	<update id="update" parameterType="com.vertexid.viself.auth.AuthMemberDTO">
+		UPDATE T_SYS_AUTH_MEMBER
+		SET UPT_DTE = NOW()
+		  , UPT_LOGIN_ID = #{loginInfo.loginId}
+		  , USER_NM = #{userNm}
+		WHERE AUTH_CD = #{authCd}
+		  AND MBR_TP_CD = #{mbrTpCd}
+		  AND MBR_ID = #{mbrId}
+	</update>
+
+    <insert id="updateAuthUser" parameterType="com.vertexid.viself.auth.AuthMemberDTO">
+--     	UPDATE V_SYS_USER
+--     	SET AUTH_CD = (
+--     		SELECT AUTH_CD FROM V_SYS_USER_TEMP WHERE LOGIN_ID = V_SYS_USER.LOGIN_ID
+--     	)
+-- 		WHERE LOGIN_ID = #{mbrId}
+    </insert>
+
+    <delete id="delete" parameterType="com.vertexid.viself.auth.AuthMemberDTO" >
+    	DELETE FROM T_SYS_AUTH_MEMBER
+    	<where>
+			<if test="authCd != null and !authCd.equals('')">
+	           	AND AUTH_CD  = #{authCd}
+			</if>
+			<if test="mbrId != null and !mbrId.equals('')">
+	           	AND MBR_ID  = #{mbrId}
+			</if>
+    		AND AUTH_CD != 'CMM_SYS'
+		</where>
+    </delete>
+
+	<select id="count" parameterType="map" resultType="paramMap" fetchSize="1000">
+		SELECT COUNT(*) cnt
+		FROM t_sys_auth_member
+		WHERE auth_cd = #{authCd}
+		  AND MBR_TP_CD = #{mbrTpCd}
+		  AND MBR_ID = #{mbrId}
+	</select>
+</mapper>

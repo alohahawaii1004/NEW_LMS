@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta content="text/html;charset=UTF-8" />
+<title>${TITLE}</title>
+</head>
+<body>
+	<div style="width:720px; min-height:400px; border:1px solid #EEEEEE; position:relative; font-size:10pt; margin:0 auto; padding:10px;">
+		<img src="${SITE_URL}/img/mail_header.png" style="width:100%"/>
+<!-- 		<b>** 본 메일은 발신전용 메일로 회신이 불가능합니다.</b> -->
+		<br />
+		<br />
+		<div style="border:0; padding:10px">
+			<pre style="font-size:10pt;">
+${CONTENT}
+			</pre>
+			<a target="_blank" onfocus="this.blur();" href="${SITE_URL}" class="btn_red"><span>홈페이지 바로가기</span></a>&nbsp;&nbsp;&nbsp;
+			<a target="popup" href="javascript:window.open('${MAIN_LINK_URL}','popup','width=1280,height=750');" class="btn_red"><span>문서 바로가기</span></a><br />
+		</div>
+	</div>
+</body>
+</body>
+</html>

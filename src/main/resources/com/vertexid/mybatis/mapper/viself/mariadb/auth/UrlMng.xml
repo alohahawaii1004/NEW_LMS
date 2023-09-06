@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2020 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<mapper namespace="com.vertexid.viself.auth.UrlMng.mariadb">
+
+    <select id="urlList" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        SELECT tsu.*
+            , ROW_NUMBER() OVER(
+                ORDER BY tsu.ACCES_URL
+            ) AS RN
+            , COUNT(*) OVER() AS TOT_CNT
+        FROM t_sys_url tsu
+        <trim prefix="WHERE" prefixOverrides="AND|OR">
+            <if test="schWord != null and schWord != ''">
+                AND (tsu.acces_url LIKE CONCAT('%',#{schWord},'%')
+                    OR tsu.url_desc LIKE CONCAT('%',#{schWord},'%'))
+            </if>
+            <if test="alwDiv != null and alwDiv != ''">
+                AND tsu.alw_div = #{alwDiv}
+            </if>
+            <if test="useYn != null and useYn != ''">
+                AND tsu.use_yn = #{useYn}
+            </if>
+        </trim>
+
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <insert id="insertUrl" parameterType="com.vertexid.viself.auth.UrlDTO">
+        INSERT INTO T_SYS_URL(
+              acces_url
+            , url_desc
+            , alw_div
+            , use_yn
+            , reg_login_id
+            , reg_dte
+            , upt_login_id
+            , upt_dte
+        )VALUES(
+            #{accesUrl}
+            , #{urlDesc}
+            , #{alwDiv}
+            , #{useYn}
+            , #{loginInfo.username}
+            , CURRENT_TIMESTAMP
+            , #{loginInfo.username}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="updateUrl" parameterType="com.vertexid.viself.auth.UrlDTO">
+        UPDATE T_SYS_URL
+        SET upt_dte = CURRENT_TIMESTAMP
+            , upt_login_id = #{loginInfo.username}
+        <if test="urlDesc != null and urlDesc != ''" >
+            , url_desc = #{urlDesc}
+        </if>
+        <if test="alwDiv != null and alwDiv != ''" >
+            , alw_div = #{alwDiv}
+        </if>
+        <if test="useYn != null and useYn != ''" >
+            , use_yn = #{useYn}
+        </if>
+        WHERE acces_url = #{accesUrl}
+    </update>
+
+    <delete id="delete" parameterType="com.vertexid.viself.auth.UrlDTO">
+        DELETE FROM t_sys_url
+        WHERE acces_url = #{accesUrl}
+    </delete>
+</mapper>

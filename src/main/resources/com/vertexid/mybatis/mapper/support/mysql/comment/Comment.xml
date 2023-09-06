@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2023 JaYu.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- Comment Mapper -->
+<mapper namespace="com.vertexid.support.comment.Comment.mysql">
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM t_sys_comment cmt
+            INNER JOIN t_issue_req ireq
+                ON cmt.rel_id = ireq.issue_id
+        <where>
+            AND cmt.rel_tp_cd = 'ISSUE'
+            AND cmt.rel_id = #{relId}
+            <choose>
+                <when test='loginInfo.containsAuthorities("CMM_SYS,SM_ADMIN")'>
+                    AND 1=1
+                </when>
+                <otherwise>
+                    AND (cmt.cmt_reg_id = #{loginInfo.loginId}
+                        OR ireq.system_id IN (
+                            SELECT system_id
+                            FROM t_support_sys_user
+                            WHERE LOGIN_ID = #{loginInfo.loginId}
+                        )
+                        OR ireq.system_id IN (
+                            SELECT system_id
+                            FROM t_support_sys_mgr
+                            WHERE LOGIN_ID = #{loginInfo.loginId}
+                        )
+                    )
+                </otherwise>
+            </choose>
+
+        </where>
+    </sql>
+
+    <select id="getList" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT
+            cmt.cmt_id
+            , cmt.CMT_title
+            , cmt.CMT_conts
+            , cmt.cmt_reg_id
+            , cmt.cmt_reg_nm
+            , CASE
+                WHEN cmt.cmt_reg_id = ireq.req_id THEN 'U'
+                ELSE 'M'
+            END REG_TP
+            , CASE
+                WHEN cmt.cmt_reg_id = #{loginInfo.loginId}
+                         AND cmt.cmt_reg_nm = #{loginInfo.nmKo}
+                    THEN 'R'
+                ELSE 'L'
+            END CMT_CATE_CD
+            , DATE_FORMAT(cmt.cmt_reg_dte, '%Y-%m-%d %T') STR_REG_DTE
+            , ROW_NUMBER() OVER(ORDER BY cmt.cmt_reg_dte ASC) RN
+        <include refid="fromNWhereConditions"/>
+    </select>
+
+    <insert id="insert" parameterType="com.vertexid.support.comment.CommentDTO">
+        INSERT INTO t_sys_comment (
+            CMT_ID
+            , REL_ID
+            , REL_TP_CD
+            , CMT_TITLE
+            , CMT_CONTS
+            , CMT_REG_ID
+            , CMT_REG_NM
+            , CMT_REG_DTE
+            , PARENT_UID
+            , USE_YN
+            , REG_DTE
+            , REG_LOGIN_ID
+            , UPT_DTE
+            , UPT_LOGIN_ID
+        ) VALUES (
+            #{cmtId}
+            , #{relId}
+            , #{relTpCd}
+            , #{cmtTitle}
+            , #{cmtConts}
+            , #{loginInfo.loginId}
+            , #{loginInfo.nmKo}
+            , NOW()
+            , #{parentUid}
+            , 'Y'
+            , NOW()
+            , #{loginInfo.loginId}
+            , NOW()
+            , #{loginInfo.loginId}
+        )
+    </insert>
+</mapper>

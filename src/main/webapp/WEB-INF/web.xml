@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://java.sun.com/xml/ns/javaee"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+         http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+         id="JaYu" version="3.0">
+
+    <display-name>JaYu</display-name>
+
+    <!-- 필터 -->
+
+    <!-- 1. encoding filter -->
+    <filter>
+        <description><![CDATA[
+            character encoding filter
+            - UTF-8 을 처리한다.
+        ]]></description>
+        <filter-name>encodingFilter</filter-name>
+        <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+        <init-param>
+            <param-name>encoding</param-name>
+            <param-value>UTF-8</param-value>
+        </init-param>
+        <init-param>
+            <param-name>forceEncoding</param-name>
+            <param-value>false</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>encodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!-- 2. Common filter -->
+    <filter>
+        <description><![CDATA[
+            공용 필터
+            - 로그처리를 위한 각종 파라메터를 수집한다.
+        ]]></description>
+        <filter-name>cmmFilter</filter-name>
+        <filter-class>com.vertexid.viself.base.CmmFilter</filter-class>
+        <init-param>
+            <description><![CDATA[
+                웹서비스 접근경로 Request Wrapper 제외
+            ]]></description>
+            <param-name>excludedUrls</param-name>
+            <param-value>/services/**</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>cmmFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!-- 3.0. simple security filter -->
+    <!--
+    -->
+    <filter>
+        <description><![CDATA[
+            접근 제어 및 보안 필터
+            - DelegatingFilterProxy 를 사용하였으며 실제 필터클래스는 다음과 같다.
+            실제 필터클래스 : com.vertexid.viself.security.SimpleSecurityFilter
+        ]]></description>
+        <filter-name>simpleSecurityFilter</filter-name>
+        <filter-class>
+            org.springframework.web.filter.DelegatingFilterProxy
+        </filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>simpleSecurityFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+        <dispatcher>ERROR</dispatcher>
+        <dispatcher>REQUEST</dispatcher>
+    </filter-mapping>
+
+    <!-- 3. spring security filter -->
+    <!--
+    <filter>
+        <description><![CDATA[
+            Spring Security Filter로 사용하기 위해서는
+            1. SimpleSecurityFilter 설정을 주석처리한다.
+            2. Spring Security Filter 설정의 주석을 제거한다.
+            3. applicationConf.xml에서 Simple Security 부분을 제거한다.
+            4. contextConfigLocation 에서 classpath*:com/vertexid/spring/conf/securityContext.xml.sample2 주석을 제거한다.
+            5. securityContext.xml.sample2 파일을 설정한다.
+        ]]></description>
+        <filter-name>springSecurityFilterChain</filter-name>
+        <filter-class>org.springframework.web.filter.DelegatingFilterProxy
+        </filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>springSecurityFilterChain</filter-name>
+        <url-pattern>/*</url-pattern>
+        <dispatcher>ERROR</dispatcher>
+        <dispatcher>REQUEST</dispatcher>
+    </filter-mapping>
+    -->
+
+    <!-- 컨텍스트 로더 -->
+    <listener>
+        <description><![CDATA[
+            Spring Context Loader를 위한 리스너
+            - Spring F/W를 위한 각종 bean, 컴포넌트 들을 메모리에 올린다.
+        ]]></description>
+        <display-name>ContextLoader</display-name>
+        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+    </listener>
+
+    <!-- RequestContextListener -->
+    <listener>
+        <description><![CDATA[
+            Spring RequestContextHolder 를 위한 리스너
+        ]]></description>
+        <display-name>RequestContextListener</display-name>
+        <listener-class>org.springframework.web.context.request.RequestContextListener</listener-class>
+    </listener>
+
+    <!-- 컨텍스트 로더설정 -->
+    <context-param>
+        <description><![CDATA[
+            컨텍스트 파라메터
+            - Spring Context 에 대한 configuration 파일 경로를 설정
+            - Spring Security 에 대한 configuration 파일 경로를 설정
+        ]]></description>
+        <param-name>contextConfigLocation</param-name>
+        <param-value>
+            <!-- Spring Context 에 대한 configuration 파일 경로를 설정 -->
+            classpath*:com/vertexid/spring/conf/applicationContext.xml
+            <!-- Spring Security Filter 설정: 사용할 경우 아래 주석을 제거한다. -->
+            <!--
+            classpath*:com/vertexid/spring/conf/securityContext.xml.sample2
+            -->
+        </param-value>
+    </context-param>
+
+    <!-- JEUS 사용시 아래 주석 제거 -->
+    <!--
+    <servlet>
+        <description><![CDATA[
+            JEUS Default Servlet 설정
+        ]]></description>
+        <servlet-name>default</servlet-name>
+        <servlet-class>jeus.servlet.servlets.ResourceServlet</servlet-class>
+    </servlet>
+    -->
+
+    <!-- Default Servlet Mapping: jsp/servlet 을 제외한 나머지 처리 -->
+    <servlet-mapping>
+        <servlet-name>default</servlet-name>
+        <url-pattern>/css/*</url-pattern>
+        <url-pattern>/img/*</url-pattern>
+        <url-pattern>/js/*</url-pattern>
+        <url-pattern>*.css</url-pattern>
+        <url-pattern>*.js</url-pattern>
+        <url-pattern>*.png</url-pattern>
+        <url-pattern>*.gif</url-pattern>
+        <url-pattern>*.jpg</url-pattern>
+        <url-pattern>*.ico</url-pattern>
+        <url-pattern>*.woff</url-pattern>
+        <url-pattern>*.ttf</url-pattern>
+        <url-pattern>*.html</url-pattern>
+    </servlet-mapping>
+
+    <!-- 디스패쳐 서블릿 설정 -->
+    <servlet>
+        <description><![CDATA[
+            Spring Dispatcher Servlet
+            - Spring MVC 의 Front-Controller 역할을 한다.
+            - contextConfigLocation: dispatcher servlet 관련 설정파일 정보
+        ]]></description>
+        <servlet-name>spring</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>/WEB-INF/config/spring/dispatcher-servlet.xml</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <!--
+      ~ Spring Dispatcher Servlet Mapping: jsp/servlet 처리
+      ~ [주의!] url-pattern 값에 /* 을 하지 않는다.
+      -->
+    <servlet-mapping>
+        <servlet-name>spring</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+
+    <!-- session config -->
+    <session-config>
+        <session-timeout>300</session-timeout>
+        <tracking-mode>COOKIE</tracking-mode>
+    </session-config>
+
+    <!-- welcome list -->
+    <welcome-file-list>
+        <welcome-file>/main/main</welcome-file>
+    </welcome-file-list>
+
+    <!-- error page -->
+    <error-page>
+        <exception-type>java.lang.Throwable</exception-type>
+        <location>/error</location>
+    </error-page>
+    <error-page>
+        <error-code>400</error-code>
+        <location>/error</location>
+    </error-page>
+    <error-page>
+        <error-code>401</error-code>
+        <location>/error</location>
+    </error-page>
+    <error-page>
+        <error-code>403</error-code>
+        <location>/error</location>
+    </error-page>
+    <error-page>
+        <error-code>404</error-code>
+        <location>/error</location>
+    </error-page>
+    <error-page>
+        <error-code>500</error-code>
+        <location>/error</location>
+    </error-page>
+
+    <!-- jsp config -->
+    <jsp-config>
+        <jsp-property-group>
+            <url-pattern>*.jsp</url-pattern>
+            <page-encoding>UTF-8</page-encoding>
+            <trim-directive-whitespaces>true</trim-directive-whitespaces>
+        </jsp-property-group>
+    </jsp-config>
+
+    <!-- resource -->
+    <resource-ref>
+        <description><![CDATA[
+             JNDI 를 사용할 경우 아래 설정을 이용한다. 
+         ]]></description> 
+        <res-ref-name>jdbc/support</res-ref-name>
+        <res-type>javax.sql.DataSource</res-type>
+        <res-auth>Container</res-auth>
+    </resource-ref>
+</web-app>

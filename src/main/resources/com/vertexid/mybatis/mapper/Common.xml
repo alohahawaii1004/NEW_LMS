@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<mapper namespace="Common">
+    <!-- 공용 ResultMap 설정 -->
+    <resultMap id="rMap" type="paramMap"/>
+    <resultMap id="rMap1" type="paramMap"/>
+    <resultMap id="rMap2" type="paramMap"/>
+    <resultMap id="rMap3" type="paramMap"/>
+    <resultMap id="rMap4" type="paramMap"/>
+    <resultMap id="rMap5" type="paramMap"/>
+    <resultMap id="rMap6" type="paramMap"/>
+    <resultMap id="rMap7" type="paramMap"/>
+    <resultMap id="rMap8" type="paramMap"/>
+
+    <!-- 공용 function -->
+    <sql id="cmmFunction">
+        <bind name="isNotEmpty" value=":[@org.apache.commons.lang3.StringUtils@isNotEmpty(#this)]"/>
+        <bind name="isNotBlank" value=":[@org.apache.commons.lang3.StringUtils@isNotBlank(#this)]"/>
+    </sql>
+
+    <!-- 페이징 접두 sql fragment -->
+    <sql id="pagingPrefix" >
+        <if test='page != null and page !=""'>
+            SELECT
+            RN AS ASC_NO
+            , PAGING_RESULT.*
+            FROM (
+        </if>
+    </sql>
+
+    <!-- 페이징 접미 sql fragment -->
+    <sql id="pagingPostfix" >
+        <if test='page != null and page !=""'>
+            ) PAGING_RESULT
+            WHERE RN > ((#{page}-1)*#{rows}) AND RN <![CDATA[ <= ]]> (#{page}*#{rows})
+        </if>
+    </sql>
+
+    <!-- 카운트 접두 sql fragment -->
+    <sql id="countPrefix">
+        SELECT COUNT(*) AS TOT_CNT
+        FROM (
+    </sql>
+
+    <!-- 카운트 접미 sql fragment -->
+    <sql id="countPostfix">
+        ) COUNT_RESULT
+    </sql>
+
+    <sql id="todoUnion"></sql>
+</mapper>

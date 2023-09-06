@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2023 JaYu.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- Stats Mapper -->
+<mapper namespace="com.vertexid.support.stats.Stats.mysql">
+
+    <sql id="managerWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        <if test="#fn=isNotBlank, #fn(schFromReqDte)">
+            AND TIF.ISSUE_DTE <![CDATA[ >= ]]> #{schFromReqDte}
+        </if>
+        <if test="#fn=isNotBlank, #fn(schToReqDte)">
+            AND TIF.ISSUE_DTE <![CDATA[ <= ]]> #{schToReqDte}
+        </if>
+        <if test="#fn=isNotBlank, #fn(schOrgNm)">
+            AND TIF.ORG_ID IN (SELECT ORG_ID FROM t_sys_org WHERE NM_KO LIKE CONCAT('%',#{schOrgNm},'%'))
+        </if>
+        <if test="#fn=isNotBlank, #fn(schSysNm)">
+            AND TIF.SYSTEM_ID IN (SELECT SYSTEM_ID FROM t_support_sys_info WHERE SYSTEM_NAME LIKE CONCAT('%',#{schSysNm},'%'))
+        </if>
+        <if test="#fn=isNotBlank, #fn(schIssueTpCd)">
+            AND TIF.ISSUE_TP_CD = #{schIssueTpCd}
+        </if>
+        <if test="#fn=isNotBlank, #fn(schIssueDomainCd)">
+            AND TIF.ISSUE_DOMAIN_CD = #{schIssueDomainCd}
+        </if>
+        <if test="#fn=isNotBlank, #fn(schReqUserNm)">
+            AND TIF.REQ_NM LIKE CONCAT('%',#{schReqUserNm},'%')
+        </if>
+        <if test="#fn=isNotBlank, #fn(schMgrUserNm)">
+            AND TIF.RCV_ID IN ( SELECT LOGIN_ID FROM T_SYS_USER WHERE NM_KO LIKE CONCAT('%',#{schMgrUserNm},'%'))
+        </if>
+        <if test="#fn=isNotBlank, #fn(schPrdTpCd)">
+            AND TIF.SYSTEM_ID IN (SELECT SYSTEM_ID FROM t_support_sys_info WHERE product_tp_cd = #{schPrdTpCd})
+        </if>
+        <if test="#fn=isNotBlank, #fn(rcvId)">
+            AND TIF.RCV_ID = #{rcvId}
+        </if>
+        <if test="#fn=isNotBlank, #fn(systemId)">
+            AND TIF.SYSTEM_ID = #{systemId}
+        </if>
+    </sql>
+
+    <!-- 담당자별 현황 -->
+    <select id="managerStats" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT TIF.RCV_ID
+            , MGR.NM_KO MGR_NM
+            , SUM(TIF.RCV_CNT) RCV_CNT
+            , SUM(TIF.RSLT_CNT) RSLT_CNT
+            , SUM(TIF.CFM_CNT) CFM_CNT
+            , SUM(TIF.CFM_Y_CNT) CFM_Y_CNT
+            , SUM(TIF.CFM_N_CNT) CFM_N_CNT
+            , SUM(TIF.RCV_CNT+TIF.RSLT_CNT+TIF.CFM_CNT) TTL
+        FROM T_ISSUE_FACT TIF
+            INNER JOIN T_SYS_USER MGR
+                ON TIF.RCV_ID = MGR.LOGIN_ID
+        <where>
+            AND MGR.USE_YN != 'N'
+            <include refid="managerWhereConditions"/>
+        </where>
+        GROUP BY TIF.RCV_ID, MGR.NM_KO
+        ORDER BY SUM(TIF.RCV_CNT+TIF.RSLT_CNT+TIF.CFM_CNT) DESC, MGR.NM_KO
+    </select>
+
+    <!-- 시스템별 현황 -->
+    <select id="systemStats" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        SELECT TIF.ORG_ID
+            , TIF.SYSTEM_ID
+            , TSSI.SYSTEM_NAME
+            , TSO.NM_KO ORG_NM
+            <if test="#fn=isNotBlank, #fn(unitYear)">
+                , TIF.ISSUE_YEAR
+            </if>
+            <if test="#fn=isNotBlank, #fn(unitMonth)">
+                , TIF.ISSUE_MM
+            </if>
+            <if test="#fn=isNotBlank, #fn(unitDay)">
+                , TIF.ISSUE_DD
+            </if>
+            , SUM(RCV_CNT) RCV_CNT
+            , SUM(RSLT_CNT) RSLT_CNT
+            , SUM(CFM_CNT) CFM_CNT
+            , SUM(CFM_Y_CNT) CFM_Y_CNT
+            , SUM(CFM_N_CNT) CFM_N_CNT
+            <choose>
+                <when test="#fn=isNotBlank, #fn(statsType)">
+                    , SUM(REQ_CNT) REQ_CNT
+                    , SUM(REQ_CNT + RCV_CNT+RSLT_CNT+CFM_CNT) TTL
+                </when>
+                <otherwise>
+                    , SUM(RCV_CNT+RSLT_CNT+CFM_CNT) TTL
+                </otherwise>
+            </choose>
+        FROM T_ISSUE_FACT TIF
+            INNER JOIN T_SUPPORT_SYS_INFO TSSI
+                ON TIF.SYSTEM_ID = TSSI.SYSTEM_ID
+            INNER JOIN T_SYS_ORG TSO
+                ON TIF.ORG_ID = TSO.ORG_ID
+        <where>
+            <include refid="managerWhereConditions"/>
+        </where>
+        GROUP BY TIF.ORG_ID
+            , TIF.SYSTEM_ID
+            , TSSI.SYSTEM_NAME
+            , TSO.NM_KO
+            <if test="#fn=isNotBlank, #fn(unitYear)">
+            , TIF.ISSUE_YEAR
+            </if>
+            <if test="#fn=isNotBlank, #fn(unitMonth)">
+            , TIF.ISSUE_MM
+            </if>
+            <if test="#fn=isNotBlank, #fn(unitDay)">
+            , TIF.ISSUE_DD
+            </if>
+        <trim prefix="ORDER BY" prefixOverrides=",">
+            <if test="#fn=isNotBlank, #fn(unitYear)">
+                , TIF.ISSUE_YEAR ASC
+            </if>
+            <if test="#fn=isNotBlank, #fn(unitMonth)">
+                , TIF.ISSUE_MM ASC
+            </if>
+            <if test="#fn=isNotBlank, #fn(unitDay)">
+                , TIF.ISSUE_DD ASC
+            </if>
+            <choose>
+                <when test="#fn=isNotBlank, #fn(statsType)">
+                    , SUM(REQ_CNT+RCV_CNT+RSLT_CNT+CFM_CNT) DESC
+                </when>
+                <otherwise>
+                    , SUM(RCV_CNT+RSLT_CNT+CFM_CNT) DESC
+                </otherwise>
+            </choose>
+             , TSSI.SYSTEM_NAME ASC, TSO.NM_KO ASC
+        </trim>
+    </select>
+
+    <select id="issueTypeStats" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        SELECT TIF.ORG_ID
+        , TIF.SYSTEM_ID
+        , TSSI.SYSTEM_NAME
+        , TSO.NM_KO ORG_NM
+        <if test="#fn=isNotBlank, #fn(unitYear)">
+            , TIF.ISSUE_YEAR
+        </if>
+        <if test="#fn=isNotBlank, #fn(unitMonth)">
+            , TIF.ISSUE_MM
+        </if>
+        <if test="#fn=isNotBlank, #fn(unitDay)">
+            , TIF.ISSUE_DD
+        </if>
+        , TIF.ISSUE_TP_CD
+        , f_sys_cd_abb_lang('REQ_GUBUN', TIF.ISSUE_TP_CD) ISSUE_TP_NM
+        , SUM(RCV_CNT) RCV_CNT
+        , SUM(RSLT_CNT) RSLT_CNT
+        , SUM(CFM_CNT) CFM_CNT
+        , SUM(CFM_Y_CNT) CFM_Y_CNT
+        , SUM(CFM_N_CNT) CFM_N_CNT
+        <choose>
+            <when test="#fn=isNotBlank, #fn(statsType)">
+                , SUM(REQ_CNT) REQ_CNT
+                , SUM(REQ_CNT + RCV_CNT+RSLT_CNT+CFM_CNT) TTL
+            </when>
+            <otherwise>
+                , SUM(RCV_CNT+RSLT_CNT+CFM_CNT) TTL
+            </otherwise>
+        </choose>
+        FROM T_ISSUE_FACT TIF
+        INNER JOIN T_SUPPORT_SYS_INFO TSSI
+        ON TIF.SYSTEM_ID = TSSI.SYSTEM_ID
+        INNER JOIN T_SYS_ORG TSO
+        ON TIF.ORG_ID = TSO.ORG_ID
+        <where>
+            <include refid="managerWhereConditions"/>
+        </where>
+        GROUP BY TIF.ORG_ID
+        , TIF.SYSTEM_ID
+        , TSSI.SYSTEM_NAME
+        , TSO.NM_KO
+        <if test="#fn=isNotBlank, #fn(unitYear)">
+            , TIF.ISSUE_YEAR
+        </if>
+        <if test="#fn=isNotBlank, #fn(unitMonth)">
+            , TIF.ISSUE_MM
+        </if>
+        <if test="#fn=isNotBlank, #fn(unitDay)">
+            , TIF.ISSUE_DD
+        </if>
+        , TIF.ISSUE_TP_CD
+        , f_sys_cd_abb_lang('REQ_GUBUN', TIF.ISSUE_TP_CD)
+        <trim prefix="ORDER BY" prefixOverrides=",">
+            <if test="#fn=isNotBlank, #fn(unitYear)">
+                , TIF.ISSUE_YEAR ASC
+            </if>
+            <if test="#fn=isNotBlank, #fn(unitMonth)">
+                , TIF.ISSUE_MM ASC
+            </if>
+            <if test="#fn=isNotBlank, #fn(unitDay)">
+                , TIF.ISSUE_DD ASC
+            </if>
+            <choose>
+                <when test="#fn=isNotBlank, #fn(statsType)">
+                    , SUM(REQ_CNT+RCV_CNT+RSLT_CNT+CFM_CNT) DESC
+                </when>
+                <otherwise>
+                    , SUM(RCV_CNT+RSLT_CNT+CFM_CNT) DESC
+                </otherwise>
+            </choose>
+            , TSSI.SYSTEM_NAME ASC, TSO.NM_KO ASC
+        </trim>
+    </select>
+
+    <select id="issueTypeTransitionStats" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        SELECT TIF.ORG_ID
+        , TIF.SYSTEM_ID
+        , TSSI.SYSTEM_NAME
+        , TSO.NM_KO ORG_NM
+        <if test="#fn=isNotBlank, #fn(unitYear)">
+            , TIF.ISSUE_YEAR
+        </if>
+        <if test="#fn=isNotBlank, #fn(unitMonth)">
+            , TIF.ISSUE_MM
+        </if>
+        <if test="#fn=isNotBlank, #fn(unitDay)">
+            , TIF.ISSUE_DD
+        </if>
+        , TIF.ISSUE_TP_CD
+        , f_sys_cd_abb_lang('REQ_GUBUN', TIF.ISSUE_TP_CD) ISSUE_TP_NM
+        , SUM(RCV_CNT) RCV_CNT
+        , SUM(RSLT_CNT) RSLT_CNT
+        , SUM(CFM_CNT) CFM_CNT
+        , SUM(CFM_Y_CNT) CFM_Y_CNT
+        , SUM(CFM_N_CNT) CFM_N_CNT
+        <choose>
+            <when test="#fn=isNotBlank, #fn(statsType)">
+                , SUM(REQ_CNT) REQ_CNT
+                , SUM(REQ_CNT + RCV_CNT+RSLT_CNT+CFM_CNT) TTL
+            </when>
+            <otherwise>
+                , SUM(RCV_CNT+RSLT_CNT+CFM_CNT) TTL
+            </otherwise>
+        </choose>
+        FROM T_ISSUE_FACT TIF
+        INNER JOIN T_SUPPORT_SYS_INFO TSSI
+        ON TIF.SYSTEM_ID = TSSI.SYSTEM_ID
+        INNER JOIN T_SYS_ORG TSO
+        ON TIF.ORG_ID = TSO.ORG_ID
+        <where>
+            <include refid="managerWhereConditions"/>
+        </where>
+        GROUP BY TIF.ORG_ID
+        , TIF.SYSTEM_ID
+        , TSSI.SYSTEM_NAME
+        , TSO.NM_KO
+        <if test="#fn=isNotBlank, #fn(unitYear)">
+            , TIF.ISSUE_YEAR
+        </if>
+        <if test="#fn=isNotBlank, #fn(unitMonth)">
+            , TIF.ISSUE_MM
+        </if>
+        <if test="#fn=isNotBlank, #fn(unitDay)">
+            , TIF.ISSUE_DD
+        </if>
+        , TIF.ISSUE_TP_CD
+        , f_sys_cd_abb_lang('REQ_GUBUN', TIF.ISSUE_TP_CD)
+        <trim prefix="ORDER BY" prefixOverrides=",">
+            <if test="#fn=isNotBlank, #fn(unitYear)">
+                , TIF.ISSUE_YEAR ASC
+            </if>
+            <if test="#fn=isNotBlank, #fn(unitMonth)">
+                , TIF.ISSUE_MM ASC
+            </if>
+            <if test="#fn=isNotBlank, #fn(unitDay)">
+                , TIF.ISSUE_DD ASC
+            </if>
+            <choose>
+                <when test="#fn=isNotBlank, #fn(statsType)">
+                    , SUM(REQ_CNT+RCV_CNT+RSLT_CNT+CFM_CNT) DESC
+                </when>
+                <otherwise>
+                    , SUM(RCV_CNT+RSLT_CNT+CFM_CNT) DESC
+                </otherwise>
+            </choose>
+            , TSSI.SYSTEM_NAME ASC, TSO.NM_KO ASC
+        </trim>
+    </select>
+    
+    <insert id="insertFact" parameterType="map">
+        {
+            CALL SP_SET_ISSUE_FACT(#{inFromDate}, #{inToDate}, #{inDays})
+        }
+    </insert>
+</mapper>

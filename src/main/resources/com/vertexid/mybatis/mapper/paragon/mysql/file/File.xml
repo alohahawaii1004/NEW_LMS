@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<mapper namespace="com.vertexid.paragon.file.File.mysql">
+    <select id="list" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT
+			ROW_NUMBER() OVER (ORDER BY ORD_NO ASC) RN
+            , COUNT(1) OVER(PARTITION BY 1) AS TOT_CNT
+            , PAGING.*
+        FROM (
+            SELECT
+            	 V1.*
+<!-- 	            , dbo.F_SYS_LANG(V1.TYPE_LANG_CD,'KO') AS TYPE_NM_KO -->
+            FROM T_SYS_ATCH_FILE V1
+            <where>
+	            <if test="relUid != null and !relUid.equals('') ">
+			        AND V1.REL_UID = #{relUid}
+				</if>
+	            <if test="atchUid != null and !atchUid.equals('') ">
+		           	AND V1.ATCH_UID  = #{atchUid}
+				</if>
+	            <if test="solMasUid != null and !solMasUid.equals('') ">
+		           	AND V1.SOL_MAS_UID  = #{solMasUid}
+				</if>
+	            <if test="fileTpCd != null and !fileTpCd.equals('') ">
+		           	AND V1.FILE_TP_CD  = #{fileTpCd}
+				</if>
+	            <if test="useYn != null and !useYn.equals('') ">
+		           	AND V1.USE_YN  = #{useYn}
+				</if>
+				<if test="arrRelUid != null and arrRelUid.length > 0">
+            	    AND  V1.REL_UID IN
+		        	<foreach collection="arrRelUid" item="item" open="(" separator="," close=")" index="index">
+		              #{item}
+		            </foreach>
+		         </if>
+			</where>
+<!--             <if test="atchUid != null and atchUid != ''"> -->
+<!-- 	           	AND O.NM_KO LIKE '%'+ #{nmKo} +'%' -->
+<!-- 			</if> -->
+        ) PAGING
+    </select>
+
+    <select id="listForFileDownload" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT
+			ROW_NUMBER() OVER (ORDER BY ORD_NO ASC) RN
+            , COUNT(1) OVER(PARTITION BY 1) AS TOT_CNT
+            , PAGING.*
+        FROM (
+            SELECT
+            	 V1.*
+            	 ,IP.APP_NO
+            FROM T_SYS_ATCH_FILE V1
+            INNER JOIN T_IPS_IP_MAS IP
+            ON V1.SOL_MAS_UID = IP.IP_MAS_UID
+            <where>
+	            <if test="relUid != null and !relUid.equals('') ">
+			        AND V1.REL_UID = #{relUid}
+				</if>
+	            <if test="atchUid != null and !atchUid.equals('') ">
+		           	AND V1.ATCH_UID  = #{atchUid}
+				</if>
+	            <if test="solMasUid != null and !solMasUid.equals('') ">
+		           	AND V1.SOL_MAS_UID  = #{solMasUid}
+				</if>
+	            <if test="fileTpCd != null and !fileTpCd.equals('') ">
+		           	AND V1.FILE_TP_CD  = #{fileTpCd}
+				</if>
+	            <if test="useYn != null and !useYn.equals('') ">
+		           	AND V1.USE_YN  = #{useYn}
+				</if>
+			</where>
+        ) PAGING
+    </select>
+
+	<update id="update" parameterType="com.vertexid.paragon.file.FileDTO" >
+		UPDATE t_sys_atch_file
+		SET upt_login_id = #{uptLoginId}
+		,upt_dte = NOW()
+		<if test="useYn != null and useYn != ''">
+           	,use_Yn  = #{useYn}
+		</if>
+		<if test="ordNo != null and ordNo != ''">
+           	,ord_no  = #{ordNo}
+		</if>
+		<if test="solMasUid != null and solMasUid != ''">
+           	,SOL_MAS_UID  =  #{solMasUid}
+		</if>
+		<trim prefix="WHERE" prefixOverrides="AND|OR">
+			<choose>
+				<when test="atchUid != null and atchUid != ''">
+	           		atch_uid = #{atchUid}
+	            </when>
+				<when test="relUid != null and relUid != ''">
+	           		rel_uid  = #{relUid}
+	            </when>
+	            <otherwise>
+		            atch_uid IS NULL
+	            </otherwise>
+			</choose>
+	        <if test="fileTpCd != null and fileTpCd != ''">
+	           	AND file_tp_cd  = #{fileTpCd}
+			</if>
+        </trim>
+	</update>
+	<delete id="delete" parameterType="com.vertexid.paragon.file.FileDTO" >
+		DELETE FROM t_sys_atch_file
+		<where>
+			<choose>
+				<when test="atchUid != null and atchUid != ''">
+	           		AND atch_uid = #{atchUid}
+	            </when>
+	            <otherwise>
+		            AND atch_uid IS NULL
+	            </otherwise>
+			</choose>
+			<if test="relUid != null and relUid != ''">
+				AND REL_UID  = #{relUid}
+			</if>
+		</where>
+	</delete>
+
+	<delete id="deleteRel" parameterType="com.vertexid.paragon.file.FileDTO" >
+		UPDATE t_sys_atch_file
+		<set>
+			, UPT_DTE = NOW()
+		    , UPT_LOGIN_ID = #{loginInfo.loginId}
+		    , USE_YN = 'N'
+		</set>
+		<where>
+			AND FILE_TP_CD  = #{fileTpCd}
+			AND REL_UID  = #{relUid}
+		</where>
+	</delete>
+
+	<insert id="insert" parameterType="map" >
+		INSERT INTO t_sys_atch_file(
+			 ATCH_UID
+			,SOL_MAS_UID
+			,REL_UID
+			,ORD_NO
+			,FILE_TP_CD
+			,FILE_SAVE_NM
+			,FILE_NM
+			,FILE_SIZE
+			,USE_YN
+			,REG_LOGIN_ID
+			,REG_DTE
+			,UPT_LOGIN_ID
+			,UPT_DTE
+			,MIG_YN
+			,MIG_FILE_PATH
+		)VALUES(
+			 #{atchUid}
+			,#{solMasUid}
+			,#{relUid}
+			,#{ordNo}
+			,#{fileTpCd}
+			,#{fileSaveNm}
+			,#{fileNm}
+			,#{fileSize}
+			,#{useYn}
+			,#{regLoginId}
+			,NOW()
+			,#{uptLoginId}
+			,NOW()
+			,#{migYn}
+			,#{migFilePath}
+		)
+	</insert>
+    <select id="ttAtchlist" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT
+			ROW_NUMBER() OVER (ORDER BY ORD_NO ASC) RN
+            , COUNT(1) OVER(PARTITION BY 1) AS TOT_CNT
+            , PAGING.*
+        FROM (
+            SELECT
+            	 V1.*
+            FROM T_SYS_ATCH_FILE V1
+            INNER JOIN T_SYS_DATA_CUBE DC
+              ON V1.REL_UID = dc.doc_uid
+            <where>
+	            <if test="solMasUid != null and !solMasUid.equals('') ">
+		           	AND V1.SOL_MAS_UID  = #{solMasUid}
+				</if>
+	            <if test="useYn != null and !useYn.equals('') ">
+		           	AND V1.USE_YN  = #{useYn}
+				</if>
+			</where>
+<!--             <if test="atchUid != null and atchUid != ''"> -->
+<!-- 	           	AND O.NM_KO LIKE '%'+ #{nmKo} +'%' -->
+<!-- 			</if> -->
+        ) PAGING
+    </select>
+
+
+
+
+  <select id="viewList" parameterType="map" resultType="paramMap" fetchSize="1000">
+    SELECT
+			ROW_NUMBER() OVER (ORDER BY ORD_NO ASC) RN
+            , COUNT(1) OVER(PARTITION BY 1) AS TOT_CNT
+            , PAGING.*
+        FROM (
+
+            SELECT
+            	 DISTINCT V1.REL_UID
+            	 		,V1.FILE_TP_CD
+            	 		,V1.ORD_NO
+            FROM T_SYS_ATCH_FILE V1
+            WHERE V1.SOL_MAS_UID = #{solMasUid}
+            AND V1.FILE_TP_CD = #{fileTpCd}
+            AND REL_UID = (
+                    SELECT
+                        DISTINCT  V2.REL_UID
+                    FROM T_SYS_ATCH_FILE V2
+                    INNER JOIN T_SYS_DATA_CUBE DC2
+                    ON V2.REL_UID = DC2.DOC_UID
+                    AND V2.SOL_MAS_UID = #{solMasUid}
+                    AND V2.FILE_TP_CD = #{fileTpCd}
+                    AND DC2.ORD_NO = (
+					                         SELECT
+					                         MAX(DC3.ORD_NO)
+					                    FROM T_SYS_ATCH_FILE V3
+					                    INNER JOIN T_SYS_DATA_CUBE DC3
+					                    ON V3.REL_UID = DC3.DOC_UID
+					                    AND V3.SOL_MAS_UID = #{solMasUid}
+					                    AND V3.FILE_TP_CD = #{fileTpCd}
+					                 )
+            )
+        ) PAGING
+    </select>
+
+
+
+
+  <select id="csViewList" parameterType="map" resultType="paramMap" fetchSize="1000">
+   SELECT
+			ROW_NUMBER() OVER (ORDER BY ORD_NO ASC) RN
+            , COUNT(1) OVER(PARTITION BY 1) AS TOT_CNT
+            , PAGING.*
+        FROM (
+	      SELECT
+	            	 DISTINCT V1.REL_UID
+	            	 		,V1.FILE_TP_CD
+	            	 		,V1.ORD_NO
+	            FROM T_SYS_ATCH_FILE V1
+	            inner join  (
+	                            select child_sol_uid from t_ips_rel_mas re
+	                            inner join t_ips_ip_mas ip
+	                            on re.parent_sol_uid = ip.ip_mas_uid
+	                            and ip_mas_uid = #{solMasUid}
+	                        ) re
+	           ON V1.SOL_MAS_UID = RE.CHILD_SOL_UID
+	           AND V1.FILE_TP_CD = #{fileTpCd}
+	           AND REL_UID = (
+	                    SELECT
+	                       DISTINCT  V2.REL_UID
+	                    FROM T_SYS_ATCH_FILE V2
+	                    INNER JOIN T_SYS_DATA_CUBE DC2
+	                    ON V2.REL_UID = DC2.DOC_UID
+	                    AND V2.SOL_MAS_UID =  (
+	                                        select child_sol_uid from t_ips_rel_mas re
+	                                        inner join t_ips_ip_mas ip
+	                                        on re.parent_sol_uid = ip.ip_mas_uid
+	                                        and ip_mas_uid =  #{solMasUid}
+	                                    )
+	                    AND V2.FILE_TP_CD = #{fileTpCd}
+	                    AND DC2.ORD_NO = (
+	                                     SELECT
+	                                         MAX(DC3.ORD_NO)
+	                                    FROM T_SYS_ATCH_FILE V3
+	                                    INNER JOIN T_SYS_DATA_CUBE DC3
+	                                    ON V3.REL_UID = DC3.DOC_UID
+	                                    AND V3.SOL_MAS_UID =  (
+	                                                        select child_sol_uid from t_ips_rel_mas re
+	                                                        inner join t_ips_ip_mas ip
+	                                                        on re.parent_sol_uid = ip.ip_mas_uid
+	                                                        and ip_mas_uid = #{solMasUid}
+	                                                    )
+	                                    AND V3.FILE_TP_CD = #{fileTpCd}
+	                 )
+	            )
+			) PAGING
+    </select>
+
+
+	<!-- 관련정보를 이용한 첨부파일 리스트 얻기 -->
+	<select id="getFileListByRelInfo" parameterType="map" resultType="paramMap" fetchSize="1000">
+		<include refid="Common.cmmFunction"/>
+		SELECT
+			c.SOL_MAS_UID
+			, c.SOL_TP_CD
+			, F_SYS_LANG(c.SOL_TP_LANG_CD, 'KO') SOL_TP_NM
+			, c.MNG_NO
+			, f.FILE_TP_CD
+			, F_SYS_LANG(F_SYS_CD_ABB_LANG('SYS_ATCH_TYPE', f.FILE_TP_CD), 'KO') FILE_TP_NM
+		    , f.FILE_SAVE_NM
+		    , f.FILE_NM
+		    , f.MIG_YN
+		    , f.MIG_FILE_PATH
+		FROM t_sys_atch_file f
+			LEFT OUTER JOIN (
+				SELECT dcb.*
+					, vssm.MNG_NO
+					, vssm.SOL_TP_LANG_CD
+					, vssm.SOL_TP_CD
+					, vssm.TITLE
+				FROM t_sys_data_cube dcb
+					INNER JOIN v_sys_sol_mas vssm
+						ON dcb.SOL_MAS_UID = vssm.SOL_MAS_UID
+				WHERE dcb.LAST_YN = 'Y'
+			) c
+				ON f.REL_UID = c.DOC_UID
+		<where>
+			AND f.USE_YN = 'Y'
+			<choose>
+				<when test='#fn = isNotBlank, #fn(solMasUid)'>
+				 	AND INSTR(#{solMasUid}, c.SOL_MAS_UID) != 0
+				</when>
+				<otherwise>
+					AND f.REL_UID = #{relUid}
+					AND f.FILE_TP_CD = #{fileTpCd}
+				</otherwise>
+			</choose>
+		</where>
+		GROUP BY c.SOL_MAS_UID, c.SOL_TP_CD, c.MNG_NO, c.SOL_TP_LANG_CD, f.FILE_TP_CD, f.FILE_SAVE_NM, f.FILE_NM
+		ORDER BY c.MNG_NO, c.ORD_NO
+	</select>
+
+</mapper>

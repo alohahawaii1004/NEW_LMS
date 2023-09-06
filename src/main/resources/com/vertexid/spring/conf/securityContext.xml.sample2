@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans:beans xmlns="http://www.springframework.org/schema/security"
+             xmlns:beans="http://www.springframework.org/schema/beans"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://www.springframework.org/schema/beans
+             http://www.springframework.org/schema/beans/spring-beans.xsd
+             http://www.springframework.org/schema/security
+             http://www.springframework.org/schema/security/spring-security.xsd">
+    <beans:description>
+        <!--
+          ~ Copyright 2021 JAYU.space
+          ~
+          ~ Licensed under the Apache License, Version 2.0 (the "License");
+          ~ you may not use this file except in compliance with the License.
+          ~ You may obtain a copy of the License at
+          ~
+          ~ http://www.apache.org/licenses/LICENSE-2.0
+          ~
+          ~ Unless required by applicable law or agreed to in writing, software
+          ~ distributed under the License is distributed on an "AS IS" BASIS,
+          ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+          ~ See the License for the specific language governing permissions and
+          ~ limitations under the License.
+          -->
+        <![CDATA[
+            Spring Security 설정
+
+            1. The Security Namespace: Spring Security 설정
+                - 보안제어 제외
+                - http 보안제어
+                    - 기본 URL 제어
+                    - form login
+                    - logout
+                    - session 설정
+                    - csrf 설정
+                - 인증 설정
+
+            2. Spring Security 관련 bean 설정
+        ]]>
+    </beans:description>
+
+    <!-- =========================================================================================== -->
+    <!-- The Security Namespace: Spring Security 설정 부분 -->
+    <!-- =========================================================================================== -->
+<!--    <debug/>-->
+
+    <!-- 보안제어 제외 영역 설정 -->
+    <http pattern="/css/**" security="none"/>
+    <http pattern="/img/**" security="none"/>
+    <http pattern="/_images/**" security="none"/>
+    <http pattern="/rsa/**" security="none"/>
+    <http pattern="/vendor/**" security="none"/>
+    <http pattern="/error/**" security="none"/>
+
+    <!-- http 보안제어 설정 -->
+    <http auto-config="true" use-expressions="true">
+
+        <!-- url 보안제어 설정 -->
+        <intercept-url pattern="/viself/auth/AuthMenu/allList/json" access="isAuthenticated()"/>
+        <intercept-url pattern="/login" access="isAnonymous()"/>
+        <intercept-url pattern="/main" access="isAuthenticated()"/>
+
+        <!-- form login 설정 -->
+        <form-login password-parameter="loginPwd"
+                    username-parameter="loginId"
+                    login-page="/login.do"
+                    default-target-url="/main"
+                    login-processing-url="/login/proc"
+                    authentication-failure-handler-ref="cmmAuthenticationFailureHandler"
+                    authentication-success-handler-ref="ipsLoginSuccessHandler"
+                    always-use-default-target="true"/>
+
+        <!-- logout 설정 -->
+        <logout invalidate-session="true"
+                logout-url="/logout"
+                delete-cookies="JSESSIONID"
+                logout-success-url="/"/>
+
+        <!-- session 설정 -->
+        <!-- 세션 고정방지 -->
+        <session-management session-fixation-protection="newSession">
+            <concurrency-control expired-url="/login.do"/>
+        </session-management>
+        <!-- 잘못된 세션 -->
+        <session-management invalid-session-url="/login.do"/>
+
+        <!-- 커스텀 필터 -->
+        <!-- 커스텀 필터: DB를 활용한 접근제어를 위해 커스텀 필터 사용 -->
+        <!--<custom-filter ref="filterSecurityInterceptor"
+                       before="FILTER_SECURITY_INTERCEPTOR"/>-->
+
+        <csrf disabled="false"/>
+
+        <!-- 커스텀 접근금지 핸들러 -->
+        <access-denied-handler ref="accessDeniedHandler"/>
+    </http>
+
+    <!-- 인증 설정 -->
+    <authentication-manager id="authManager">
+        <!-- 인증 프로바이더 설정: 사용자정의 userDetailsService 사용 -->
+        <!-- 상황에 따라 프로바이더를 구현해야 할 수도 있으나 일반적으로 service 정도만 구현해도 가능 -->
+        <authentication-provider user-service-ref="userDetailsSvc">
+            <password-encoder ref="passwordEncoder"/>
+        </authentication-provider>
+    </authentication-manager>
+
+    <!-- =========================================================================================== -->
+    <!-- Spring Security 관련 bean 설정 부분 -->
+    <!-- =========================================================================================== -->
+
+    <!-- 필터 인터셉터 -->
+    <!--<beans:bean id="filterSecurityInterceptor"
+                class="org.springframework.security.web.access.intercept.FilterSecurityInterceptor">
+        <beans:property name="authenticationManager" ref="authManager"/>
+    </beans:bean>-->
+
+    <!-- 접근금지 핸들러 -->
+    <beans:bean id="accessDeniedHandler" class="com.vertexid.spring.security.CmmAccessDeniedHandler">
+        <beans:description><![CDATA[
+            TODO
+            - 세션만료 처리
+            - CSRF 오류처리
+            - 일반 접근 오류 처리
+            - login/logout 관한 비정상 접근 처리
+        ]]></beans:description>
+    </beans:bean>
+
+    <!-- 로그인 실패 핸들러 -->
+    <beans:bean id="cmmAuthenticationFailureHandler"
+                class="com.vertexid.spring.security.CmmAuthenticationFailureHandler">
+        <beans:description><![CDATA[
+            - 로그인(인증) 실패후에 후처리 작업(실패카운트 증가 등)을 수행
+            - 실패이후 페이지 리다이렉트를 처리함
+        ]]></beans:description>
+    </beans:bean>
+
+    <!-- 로그인 성공 핸들러 -->
+    <beans:bean id="ipsLoginSuccessHandler"
+                class="com.vertexid.ips.login.IpsLoginSuccessHandler">
+        <beans:description><![CDATA[
+            - 로그인(인증) 성공후에 후처리 작업(잠금 초기화, 로그인 기록 등)을 수행
+            - 인증이후 페이지 리다이렉트를 처리함
+        ]]></beans:description>
+        <beans:property name="defaultUrl" value="/main/main"/>
+    </beans:bean>
+
+    <!-- 사용자 인증 서비스 -->
+    <beans:bean id="userDetailsSvc" class="com.vertexid.ips.login.IpsUserDetailSvc">
+        <beans:description><![CDATA[
+            - DB 등에서 사용자 정보를 usersname 파라메터를 이용해서 가져옴
+            - 고객사의 상황에 따라 username 파라메터를 활용해서 사용자 정보를 가져오도록 변형해서 사용하기도 함
+        ]]></beans:description>
+    </beans:bean>
+
+    <!-- 사용자 암호 인코더 : 기본 BCryptEncoder -->
+    <beans:bean id="passwordEncoder"
+                class="com.vertexid.spring.security.PasswordEncoder">
+        <beans:description><![CDATA[
+            - 기본 Password Encoder로 BCryptPasswordEncoder를 구현함.
+            - 별도의 인코더가 필요할 경우(고객사의 암호 알고리즘 등)
+              org.springframework.security.crypto.password.PasswordEncoder 를 구현함
+        ]]></beans:description>
+    </beans:bean>
+
+</beans:beans>

@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2023 JaYu.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- Customer Mapper -->
+<mapper namespace="com.vertexid.support.customer.CustomerMng.mariadb">
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM t_sys_org org
+        <where>
+            <if test="#fn=isNotBlank, #fn(schOrgNm)">
+                AND org.NM_KO LIKE CONCAT('%',#{schOrgNm},'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schUseYn)">
+                AND org.USE_YN = #{schUseYn}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schOrgId)">
+                AND org.org_id = #{schOrgId}
+            </if>
+        </where>
+    </sql>
+
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        SELECT org.ORG_ID
+            , org.NM_KO ORG_NM
+            , org.USE_YN
+            , ROW_NUMBER() OVER(ORDER BY org.ord_no, org.nm_ko) RN
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.countPrefix"/>
+        SELECT org.org_id
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <select id="loadData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT org.ORG_ID
+             , org.NM_KO ORG_NM
+             , org.NM_KO
+             , org.USE_YN
+             , org.ORD_NO
+             , ometa.org_desc
+        FROM t_sys_org org
+            LEFT OUTER JOIN t_sys_org_meta ometa
+                ON org.org_id = ometa.org_id
+        <where>
+            AND org.org_id = #{orgId}
+        </where>
+    </select>
+
+    <select id="getNewOrgId" resultType="string">
+        SELECT F_SYS_ORG_ID() AS ORG_ID
+    </select>
+
+    <insert id="insertMas" parameterType="com.vertexid.support.customer.CustomerDTO">
+        <include refid="Common.cmmFunction"/>
+        INSERT INTO t_sys_org(
+            ORG_ID
+        <if test="#fn=isNotBlank, #fn(ordNo)">
+            , ORD_NO
+        </if>
+            , NM_KO
+            , NM_EN
+            , NM_JA
+            , NM_ZH
+            , PARENT_ORG_ID
+            , ORG_TP_CD
+            , USE_YN
+            , REG_DTE
+            , REG_LOGIN_ID
+            , UPT_DTE
+            , UPT_LOGIN_ID
+        )VALUES(
+            #{orgId}
+        <if test="#fn=isNotBlank, #fn(ordNo)">
+            , #{ordNo}
+        </if>
+            , #{nmKo}
+            , #{nmEn}
+            , #{nmJa}
+            , #{nmZh}
+            , #{parentOrgId}
+            , #{orgTpCd}
+            , #{useYn}
+            , NOW()
+            , #{loginInfo.loginId}
+            , NOW()
+            , #{loginInfo.loginId}
+        )
+    </insert>
+
+    <update id="updateMas" parameterType="com.vertexid.support.customer.CustomerDTO">
+        UPDATE t_sys_org
+        SET    UPT_DTE = NOW()
+            , UPT_LOGIN_ID = #{loginInfo.loginId}
+            , ORD_NO = #{ordNo}
+            , NM_KO = #{nmKo}
+            , NM_EN = #{nmEn}
+            , NM_JA = #{nmJa}
+            , NM_ZH = #{nmZh}
+            , PARENT_ORG_ID = #{parentOrgId}
+            , ORG_TP_CD = #{orgTpCd}
+            , USE_YN = #{useYn}
+        <where>
+            AND org_id = #{orgId}
+        </where>
+    </update>
+
+    <select id="getMetaData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT org_desc
+        FROM t_sys_org_meta
+        <where>
+            AND org_id = #{orgId}
+        </where>
+    </select>
+
+    <insert id="insertMeta" parameterType="com.vertexid.support.customer.CustomerDTO">
+        INSERT INTO t_sys_org_meta(
+            ORG_ID
+            , ORG_DESC
+            , REG_DTE
+            , REG_LOGIN_ID
+            , UPT_DTE
+            , UPT_LOGIN_ID
+        )VALUES(
+            #{orgId}
+            , #{orgDesc}
+            , NOW()
+            , #{loginInfo.loginId}
+            , NOW()
+            , #{loginInfo.loginId}
+        )
+    </insert>
+
+    <update id="updateMeta" parameterType="com.vertexid.support.customer.CustomerDTO">
+        UPDATE t_sys_org_meta
+        SET    UPT_DTE = NOW()
+            , UPT_LOGIN_ID = #{loginInfo.loginId}
+            , ORG_DESC = #{orgDesc}
+        <where>
+            AND org_id = #{orgId}
+        </where>
+    </update>
+
+    <delete id="deleteVOrg" parameterType="map">
+        DELETE FROM v_sys_org
+    </delete>
+
+    <insert id="insertVOrg" parameterType="map">
+        INSERT INTO v_sys_org
+        SELECT *
+        FROM v_sys_org_temp
+    </insert>
+
+</mapper>

@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context.xsd
+            http://www.springframework.org/schema/util
+            http://www.springframework.org/schema/util/spring-util.xsd">
+    <description>
+        <!--
+          ~ Copyright 2022 JAYU.space
+          ~
+          ~ Licensed under the Apache License, Version 2.0 (the "License");
+          ~ you may not use this file except in compliance with the License.
+          ~ You may obtain a copy of the License at
+          ~
+          ~ http://www.apache.org/licenses/LICENSE-2.0
+          ~
+          ~ Unless required by applicable law or agreed to in writing, software
+          ~ distributed under the License is distributed on an "AS IS" BASIS,
+          ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+          ~ See the License for the specific language governing permissions and
+          ~ limitations under the License.
+          -->
+        <![CDATA[
+            Application 설정
+
+            1. 어노테이션 기반 설정 사용
+
+            2. 컴포넌트 스캔: controller는 dispatcher servlet 에서 스캔하므로 제외
+
+            3. 공통프로퍼티 설정: properties.xml
+                - appliction 프로퍼티 항목 정의
+        ]]>
+    </description>
+
+    <!-- 어노테이션 설정을 이용 -->
+    <context:annotation-config/>
+
+    <!-- 컴포넌트 스캔 설정 -->
+    <context:component-scan base-package="com.vertexid">
+        <!-- controller 는 application context 스캔에서 제외(dispatcher servlet 에서 로딩) -->
+        <context:exclude-filter type="annotation"
+                                expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+
+    <bean id="localhostInetAddress" class="java.net.InetAddress" factory-method="getLocalHost"/>
+    <bean id="hostname" factory-bean="localhostInetAddress" factory-method="getHostName"/>
+
+    <!-- 공통 프로퍼티 로딩 -->
+    <util:properties id="cmmProperties" location="classpath:properties.xml"/>
+
+    <bean id="pagingParamFunction"
+          class="com.vertexid.viself.base.extension.EasyUiPagingParamFunction">
+        <description><![CDATA[
+            UI paging parameter 처리를 위한 빈
+            - Easy UI 용
+        ]]></description>
+    </bean>
+
+    <!-- 사용자 정의 Security 설정 -->
+    <bean id="simpleAccessControlManager" class="com.vertexid.viself.security.SimpleAccessControlManager">
+        <description><![CDATA[
+            접근제어 매니저
+            - 실질적인 Security Filter 의 Body
+        ]]></description>
+        <constructor-arg name="simpleSecurityEnvVO" ref="simpleSecurityEnvMapFactoryBean"/>
+        <property name="simpleReloadableSecurityMetadataSource" ref="simpleReloadableSecurityMetadataSource"/>
+    </bean>
+
+    <bean id="simpleSecurityEnvMapFactoryBean" class="com.vertexid.viself.security.SimpleSecurityEnvMapFactoryBean">
+        <description><![CDATA[
+            SimpleSecurityEnvVO를 사용하기 위한 Spring FactoryBean
+        ]]></description>
+        <property name="simpleSecurityEnvSvc" ref="simpleSecurityEnvSvc"/>
+    </bean>
+
+    <bean id="authenticationManager" class="com.vertexid.viself.security.SimpleAuthenticationManager">
+        <description><![CDATA[
+            인증정보 매니저: 로그인 성공/실패 처리
+            로그인 폼을 사용해서 인증 처리
+
+            [properties]
+                - logoutSuccessUrl: 로그인 성공후 이동할 페이지
+        ]]></description>
+        <property name="logoutSuccessUrl" value="#{cmmProperties['security.expiredURI']}"/>
+    </bean>
+    <bean id="passwordEncoder" class="com.vertexid.spring.security.PasswordEncoder">
+        <description><![CDATA[
+            password encoder
+            - Bcrypt encoder 를 기반으로 하였다.
+        ]]></description>
+    </bean>
+    <bean id="simpleUserDetailsSvc" class="com.vertexid.support.login.SupportUserDetailSvc">
+        <description><![CDATA[
+            사용자 정보 제공 서비스
+            - DB에서 사용자 정보를 얻어온다.
+        ]]></description>
+    </bean>
+    <bean id="loginSuccessHandler" class="com.vertexid.viself.login.SimpleLoginSuccessHandler">
+        <description><![CDATA[
+            로그인 성공에 대한 처리를 하는 핸들러
+
+            [properties]
+                - defaultUrl: 로그인 성공후 이동할 페이지
+        ]]></description>
+        <property name="defaultUrl" value="#{cmmProperties['security.defaultURI']}"/>
+    </bean>
+    <bean id="loginFailHandler" class="com.vertexid.viself.login.SimpleLoginFailHandler">
+        <description><![CDATA[
+            로그인 실패에 대한 처리를 하는 핸들러
+                - 실패 기록, 계정 잠금 등의 처리를 수행 할 수 있다.
+
+            [properties]
+                - defaultFailureUrl: 로그인 실패 이동할 페이지
+                - loginidname: 로그인 id 파라메터명
+                - loginpasswordname: 로그인 password 파라메터명
+        ]]></description>
+        <property name="defaultFailureUrl" value="/main/loginFail"/>
+        <property name="loginidname" value="#{cmmProperties['security.idParamName']}"/>
+        <property name="loginpasswordname" value="#{cmmProperties['security.pwParamName']}"/>
+    </bean>
+
+    <!-- 접근 제어를 위한 권한-주소 정보처리 -->
+    <bean class="com.vertexid.viself.security.SimpleReloadableSecurityMetadataSource"
+          id="simpleReloadableSecurityMetadataSource">
+        <description><![CDATA[
+            권한-주소 관계정보를 저장하고 있는 저장소
+            reload 가능하다.
+
+            [constructor-arg: 생성자 변수]
+                - requestMap: 권한-주소 맵
+        ]]></description>
+        <constructor-arg name="requestMap" ref="requestMap"/>
+    </bean>
+    <bean id="requestMap" class="com.vertexid.viself.security.SimpleUrlResourceMapFactoryBean">
+        <description><![CDATA[
+            권한-주소 데이터 맵
+
+            [properties]
+                - secureObjectSvc: 권한-주소 데이터 맵 서비스
+        ]]></description>
+        <property name="secureObjectSvc" ref="simpleSecureObjectSvc"/>
+    </bean>
+    <bean id="simpleSecureObjectSvc" class="com.vertexid.viself.security.SimpleSecureObjectSvc">
+        <description><![CDATA[
+            권한-주소 데이터 서비스
+            - DB 에서 권한-주소 형태의 정보를 얻어 온다.
+        ]]></description>
+    </bean>
+</beans>
+

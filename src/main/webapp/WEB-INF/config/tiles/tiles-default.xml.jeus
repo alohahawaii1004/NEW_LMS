@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE tiles-definitions SYSTEM
+        "file:///GIMS/webapp/tiles-config_3_0.dtd">
+<!--
+  ~ [주의!] 폐쇄망에서 dtd 를 찾지못할 경우 오류가 발생함
+  ~
+  ~ dtd 는 tiles-core-3.x.jar 안에 org/apache/tiles/resources/ 경로에 있는 dtd 파일을
+  ~ 고정위치에 복사하고 아래 처럼 DOCTYPE 에 해당위치를 정의 함
+  ~ (ex: /GIMS/webapp/tiles-config_3_0.dtd)
+  ~ <!DOCTYPE tiles-definitions SYSTEM
+  ~          "file:///GIMS/webapp/tiles-config_3_0.dtd">
+  -->
+<tiles-definitions>
+
+    <!-- layout : particle -->
+    <definition id="layout.include" name="layout.include"
+                template="/WEB-INF/tiles/layout/particleLayout.jsp">
+        <put-attribute name="page.body" value=""/>
+    </definition>
+
+    <!-- layout : modal -->
+    <definition id="layout.modal" name="layout.modal"
+                template="/WEB-INF/tiles/layout/modalLayout.jsp">
+        <put-attribute name="page.body" value=""/>
+    </definition>
+
+    <!-- layout : popup -->
+    <definition id="layout.popup" name="layout.popup"
+                template="/WEB-INF/tiles/layout/popupLayout.jsp">
+        <put-attribute name="page.body" value=""/>
+    </definition>
+
+    <!-- layout : login -->
+    <definition id="layout.login" name="layout.login"
+                template="/WEB-INF/tiles/layout/loginLayout.jsp">
+        <put-attribute name="page.body" value=""/>
+    </definition>
+
+    <!-- layout : main -->
+    <definition id="layout.main" name="layout.main"
+                template="/WEB-INF/tiles/layout/mainLayout.jsp">
+        <put-attribute name="page.body" value=""/>
+    </definition>
+
+    <!-- layout : innerHtml -->
+    <definition id="layout.inner" name="layout.inner"
+                template="/WEB-INF/tiles/layout/innerLayout.jsp">
+        <put-attribute name="page.body" value=""/>
+    </definition>
+
+    <!-- layout : error -->
+    <definition id="layout.error" name="layout.error"
+                template="/WEB-INF/tiles/layout/errorLayout.jsp">
+        <put-attribute name="page.body" value=""/>
+    </definition>
+
+    <!-- layout : base -->
+    <definition id="layout.base" name="layout.base"
+                template="/WEB-INF/tiles/layout/baseLayout.jsp">
+        <put-attribute name="page.body" value=""/>
+    </definition>
+
+
+
+    <!-- include.tiles -->
+    <definition name="/*.include.tiles" extends="layout.include">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}.jsp"/>
+        <put-attribute name="page.path" value="{1}" type="string"/>
+        <put-attribute name="module" value="{1}" type="string"/>
+    </definition>
+    <definition name="/*/*.include.tiles" extends="layout.include">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}" type="string"/>
+        <put-attribute name="module" value="{2}" type="string"/>
+    </definition>
+    <definition name="/*/*/*.include.tiles" extends="layout.include">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}/{3}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}/{3}" type="string"/>
+        <put-attribute name="module" value="{3}" type="string"/>
+    </definition>
+    <definition name="/*/*/*/*.include.tiles" extends="layout.include">
+        <put-attribute name="page.body"
+                       value="/WEB-INF/jsp/{1}/{2}/{3}/{4}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}/{3}/{4}" type="string"/>
+        <put-attribute name="module" value="{4}" type="string"/>
+    </definition>
+
+
+    <!-- popup.tiles -->
+    <definition name="/*.modal.tiles" extends="layout.modal">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}.jsp"/>
+        <put-attribute name="page.path" value="{1}" type="string"/>
+        <put-attribute name="module" value="{1}" type="string"/>
+    </definition>
+    <definition name="/*/*.modal.tiles" extends="layout.modal">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}" type="string"/>
+        <put-attribute name="module" value="{2}" type="string"/>
+    </definition>
+    <definition name="/*/*/*.modal.tiles" extends="layout.modal">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}/{3}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}/{3}" type="string"/>
+        <put-attribute name="module" value="{3}" type="string"/>
+    </definition>
+    <definition name="/*/*/*/*.modal.tiles" extends="layout.modal">
+        <put-attribute name="page.body"
+                       value="/WEB-INF/jsp/{1}/{2}/{3}/{4}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}/{3}/{4}" type="string"/>
+        <put-attribute name="module" value="{4}" type="string"/>
+    </definition>
+
+
+    <!-- popup.tiles -->
+    <definition name="/*.popup.tiles" extends="layout.popup">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}.jsp"/>
+        <put-attribute name="page.path" value="{1}" type="string"/>
+        <put-attribute name="module" value="{1}" type="string"/>
+    </definition>
+    <definition name="/*/*.popup.tiles" extends="layout.popup">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}" type="string"/>
+        <put-attribute name="module" value="{2}" type="string"/>
+    </definition>
+    <definition name="/*/*/*.popup.tiles" extends="layout.popup">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}/{3}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}/{3}" type="string"/>
+        <put-attribute name="module" value="{3}" type="string"/>
+    </definition>
+    <definition name="/*/*/*/*.popup.tiles" extends="layout.popup">
+        <put-attribute name="page.body"
+                       value="/WEB-INF/jsp/{1}/{2}/{3}/{4}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}/{3}/{4}" type="string"/>
+        <put-attribute name="module" value="{4}" type="string"/>
+    </definition>
+
+
+
+    <!-- login.tiles -->
+    <definition name="login.tiles" extends="layout.login">
+        <put-attribute name="page.body"
+                       value="/WEB-INF/jsp/main/login.jsp"/>
+        <put-attribute name="page.path" value="main/login" type="string"/>
+    </definition>
+
+    <!-- error.tiles -->
+    <definition name="error.tiles" extends="layout.error">
+        <put-attribute name="page.body"
+                       value="/WEB-INF/jsp/error/errorPage.jsp"/>
+        <put-attribute name="page.path" value="error/error" type="string"/>
+    </definition>
+
+    <!-- main.tiles -->
+    <!--<definition name="/main*.tiles" extends="layout.main">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}.jsp"/>
+        <put-attribute name="page.path" value="{1}" type="string"/>
+    </definition>
+
+    <definition name="/*/main*.tiles" extends="layout.main">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}" type="string"/>
+    </definition>-->
+
+
+
+    <!-- *.tiles -->
+    <definition name="/*.inner.tiles" extends="layout.inner">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}.jsp"/>
+        <put-attribute name="page.path" value="{1}" type="string"/>
+        <put-attribute name="module" value="{1}" type="string"/>
+    </definition>
+
+    <definition name="/*/*.inner.tiles" extends="layout.inner">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}" type="string"/>
+        <put-attribute name="module" value="{2}" type="string"/>
+    </definition>
+
+    <definition name="/*/*/*.inner.tiles" extends="layout.inner">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}/{3}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}/{3}" type="string"/>
+        <put-attribute name="module" value="{3}" type="string"/>
+    </definition>
+
+    <definition name="/*/*/*/*.inner.tiles" extends="layout.inner">
+        <put-attribute name="page.body"
+                       value="/WEB-INF/jsp/{1}/{2}/{3}/{4}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}/{3}/{4}" type="string"/>
+        <put-attribute name="module" value="{4}" type="string"/>
+    </definition>
+
+
+
+    <!-- *.tiles -->
+    <definition name="/*.tiles" extends="layout.base">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}.jsp"/>
+        <put-attribute name="page.path" value="{1}" type="string"/>
+        <put-attribute name="module" value="{1}" type="string"/>
+    </definition>
+    <definition name="/*/*.tiles" extends="layout.base">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}" type="string"/>
+        <put-attribute name="module" value="{2}" type="string"/>
+    </definition>
+    <definition name="/*/*/*.tiles" extends="layout.base">
+        <put-attribute name="page.body" value="/WEB-INF/jsp/{1}/{2}/{3}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}/{3}" type="string"/>
+        <put-attribute name="module" value="{3}" type="string"/>
+    </definition>
+    <definition name="/*/*/*/*.tiles" extends="layout.base">
+        <put-attribute name="page.body"
+                       value="/WEB-INF/jsp/{1}/{2}/{3}/{4}.jsp"/>
+        <put-attribute name="page.path" value="{1}/{2}/{3}/{4}" type="string"/>
+        <put-attribute name="module" value="{4}" type="string"/>
+    </definition>
+</tiles-definitions>

@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<mapper namespace="com.vertexid.viself.menu.MenuMng.mysql">
+
+    <select id="list" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <![CDATA[
+            SELECT DISTINCT A.*
+            FROM V_TREE_MENU A
+        ]]>
+        <![CDATA[
+        ]]>
+        <![CDATA[
+
+            WHERE A.USE_YN='1'
+            ORDER BY A.LEVEL_NO,A.ORD_NO
+        ]]>
+    </select>
+
+    <select id="allList" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        SELECT
+            V1.*
+            ,(SELECT COUNT(*) FROM T_SYS_AUTH_MENU WHERE MENU_ID = V1.MENU_ID) as AUTH_CNT
+            , 'U' as cud
+        FROM V_TREE_MENU V1
+        <where>
+            <choose>
+                <when test="schValue != null and schValue != ''">
+                    AND V1.parent_menu_id LIKE CONCAT('%',#{parentCd},'%')
+                    <if test="schField != null and schField.equals('LANG_CD')">
+                        AND V1.LANG_CD LIKE CONCAT('%',#{schValue},'%')
+                    </if>
+                    <if test="schField != null and schField.equals('CD')">
+                        AND V1.menu_id LIKE CONCAT('%',#{schValue},'%')
+                    </if>
+                </when>
+                <when test="#fn=isNotBlank, #fn(id)">
+                    AND v1.parent_menu_id  = #{id}
+                </when>
+                <when test="parentCd != null and parentCd != ''">
+                    v1.parent_menu_id  = #{parentCd}
+                </when>
+                <when test="parentMenuId != null and parentMenuId != ''">
+                    v1.parent_menu_id  = #{parentMenuId}
+                </when>
+                <when test="menuId != null and menuId != ''">
+                    v1.menu_id = #{menuId}
+                </when>
+                <otherwise>
+                    V1.PARENT_MENU_ID IS NULL
+                </otherwise>
+            </choose>
+        </where>
+        ORDER BY V1.LEVEL_NO,V1.ORD_NO
+    </select>
+
+    <insert id="insert" parameterType="com.vertexid.viself.menu.MenuDTO">
+        INSERT INTO t_sys_menu(
+            MENU_ID
+           , PARENT_MENU_ID
+           , ORD_NO
+           , LANG_CD
+           , USE_YN
+           , JSON_DATA
+           , MENU_ICON
+           , MODULE_ID
+           , REG_LOGIN_ID
+           , REG_DTE
+           , UPT_LOGIN_ID
+           , UPT_DTE
+        )VALUES(
+            #{menuId}
+           , #{parentMenuId}
+           , #{ordNo}
+           , #{langCd}
+           , #{useYn}
+           , #{jsonData}
+           , #{menuIcon}
+           , #{moduleId}
+           , 'SYSTEM'
+           , NOW()
+           , 'SYSTEM'
+           , NOW()
+        )
+    </insert>
+
+    <update id="update" parameterType="com.vertexid.viself.menu.MenuDTO">
+        UPDATE t_sys_menu
+        SET UPT_LOGIN_ID = 'SYSTEM'
+            , UPT_DTE = NOW()
+        <if test="langCd != null and langCd != ''">
+            , LANG_CD = #{langCd}
+        </if>
+        <if test="useYn != null and useYn != ''">
+            , USE_YN = #{useYn}
+        </if>
+        <if test="ordNo != null and ordNo != ''">
+            , ORD_NO = #{ordNo}
+        </if>
+        <if test="parentMenuId != null and parentMenuId != ''">
+            , PARENT_MENU_ID = #{parentMenuId}
+        </if>
+        <if test="jsonData != null and jsonData != ''">
+            , JSON_DATA = #{jsonData}
+        </if>
+        <if test="moduleId != null and moduleId != ''">
+            , MODULE_ID = #{moduleId}
+        </if>
+        <if test="menuIcon != null and menuIcon != ''">
+            , MENU_ICON = #{menuIcon}
+        </if>
+        WHERE menu_id = #{menuId}
+    </update>
+
+    <!--
+      ~ 메뉴 조회(상위 메뉴 조회 등에 이용)
+      -->
+    <select id="data" parameterType="map" resultType="paramMap">
+        SELECT *
+        FROM t_sys_menu
+        WHERE menu_id = #{menuId}
+    </select>
+
+    <select id="getTreeList" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT MENU_ID
+        FROM V_TREE_MENU
+        WHERE ORD_MENU_ID_PATH LIKE CONCAT('%',(
+            SELECT ORD_MENU_ID_PATH
+            FROM V_TREE_MENU
+            WHERE MENU_ID = #{menuId}
+        ) ,'%')
+        ORDER BY ORD_MENU_ID_PATH ASC
+    </select>
+
+    <delete id="delete" parameterType="com.vertexid.viself.menu.MenuDTO">
+        DELETE t_sys_menu
+        WHERE menu_id = #{menuId}
+    </delete>
+
+    <delete id="deleteForPath" parameterType="com.vertexid.viself.menu.MenuDTO">
+        DELETE FROM t_sys_menu
+        WHERE menu_id IN (
+            SELECT MENU_ID
+            FROM V_TREE_MENU
+            WHERE ORD_MENU_ID_PATH LIKE CONCAT('%',(
+                SELECT ORD_MENU_ID_PATH
+                FROM V_TREE_MENU
+                WHERE MENU_ID = #{menuId}
+            ) ,'%')
+        )
+    </delete>
+
+    <delete id="deleteForParent" parameterType="com.vertexid.viself.menu.MenuDTO">
+        DELETE t_sys_menu
+        WHERE PARENT_MENU_ID = #{parentMenuId}
+    </delete>
+</mapper>

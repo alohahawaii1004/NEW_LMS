@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2020 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<mapper namespace="com.vertexid.viself.code.CodeMng.mariadb">
+    <select id="listCode" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        SELECT V1.*
+        	,'U' as cud
+        	, ROW_NUMBER() OVER (ORDER BY ORD_NO ASC) RN
+        FROM V_SYS_CODE V1
+        <trim prefix="WHERE" prefixOverrides="AND|OR">
+            <choose>
+                <when test="#fn=isNotBlank, #fn(schValue)">
+                    <if test="schField != null and schField.equals('LANG_CD')">
+                        AND V1.LANG_CD LIKE CONCAT('%',#{schValue},'%')
+                    </if>
+                    <if test="schField != null and schField.equals('CD')">
+                        AND V1.CD LIKE CONCAT('%',#{schValue},'%')
+                    </if>
+                </when>
+                <otherwise>
+                    <choose>
+                        <when test="#fn=isNotBlank, #fn(id)">
+                            AND v1.parent_cd  = #{id}
+                        </when>
+                        <otherwise>
+                            <if test="parentCd == null or parentCd.equals('')">
+                                AND v1.parent_cd IS NULL
+                            </if>
+                            <if test="parentCd != null and parentCd.equals('ROOT')">
+                                AND v1.parent_cd IS NULL
+                            </if>
+                            <if test="#fn=isNotBlank, #fn(parentCd) and !parentCd.equals('ROOT') and (schValue == null or schValue.equals('') )">
+                                AND v1.parent_cd  = #{parentCd}
+                            </if>
+                        </otherwise>
+                    </choose>
+                    <if test="cd != null and cd != ''">
+                        AND v1.cd = #{cd}
+                    </if>
+                    <if test="inCds != null">
+                          AND v1.cd IN
+                        <foreach collection="inCds" item="item" open="(" separator="," close=")" index="index">
+                          #{item}
+                      </foreach>
+                    </if>
+                </otherwise>
+            </choose>
+        </trim>
+		<if test="useYn != null and useYn != ''">
+			AND v1.use_yn = #{useYn}
+		</if>
+
+        ORDER BY ord_no ASC
+
+    </select>
+    <select id="listCodeForDTO" parameterType="com.vertexid.viself.code.CodeDTO" resultType="paramMap" fetchSize="1000">
+        SELECT V1.*
+        	,'U' as cud
+        	, ROW_NUMBER() OVER (ORDER BY ORD_NO ASC) RN
+        FROM V_SYS_CODE V1
+        <trim prefix="WHERE" prefixOverrides="AND|OR">
+        	<if test="parentCd == null or parentCd.equals('')">
+				AND v1.parent_cd IS NULL
+			</if>
+        	<if test="parentCd != null and parentCd.equals('ROOT')">
+				AND v1.parent_cd IS NULL
+			</if>
+        	<if test="parentCd != null and !parentCd.equals('') and !parentCd.equals('ROOT')">
+				AND v1.parent_cd  = #{parentCd}
+			</if>
+        	<if test="cd != null and cd != ''">
+	            AND v1.cd = #{cd}
+			</if>
+        	<if test="cdAttr1 != null and cdAttr1 != ''">
+	            AND v1.CD_ATTR_1 = #{cdAttr1}
+			</if>
+        	<if test="cdAttr2 != null and cdAttr2 != ''">
+	            AND v1.CD_ATTR_2 = #{cdAttr2}
+			</if>
+        	<if test="inCds != null and inCds.length > 0">
+        		  AND v1.cd IN
+        		<foreach collection="inCds" item="item" open="(" separator="," close=")" index="index">
+	              #{item}
+	            </foreach>
+        	</if>
+        	<if test="inCdAbbs != null">
+        		  AND v1.cd_abb IN
+        		<foreach collection="inCdAbbs" item="item" open="(" separator="," close=")" index="index">
+	              #{item}
+	            </foreach>
+        	</if>
+        </trim>
+		<if test="useYn != null and useYn != ''">
+			AND v1.use_yn = #{useYn}
+		</if>
+
+        ORDER BY ord_no ASC
+
+    </select>
+    <delete id="deleteByCd" parameterType="map">
+        DELETE FROM t_sys_code where CD = #{cd}
+    </delete>
+    <delete id="deleteDtlCode" parameterType="com.vertexid.viself.code.CodeDTO" >
+        DELETE FROM t_sys_code
+        WHERE CD = #{cd}
+    </delete>
+    <delete id="deleteByParent" parameterType="map">
+        DELETE FROM t_sys_code
+        <choose>
+        	<when test="parentCd != null and !parentCd.equals('')">
+	           	WHERE PARENT_CD  = #{parentCd}
+			</when>
+        	<otherwise>
+	           	WHERE PARENT_CD  IS NULL
+			</otherwise>
+        </choose>
+    </delete>
+    <delete id="deleteVCode" >
+        DELETE FROM v_sys_code
+    </delete>
+    <insert id="selectVInsert" >
+        INSERT INTO v_sys_code
+        SELECT * FROM v_sys_code_temp
+    </insert>
+    <insert id="insertDtlCode" parameterType="com.vertexid.viself.code.CodeDTO">
+        INSERT INTO t_sys_code(
+             CD
+           , ORD_NO
+           , CD_ABB
+           , LANG_CD
+           , PARENT_CD
+           , CD_ATTR_1
+           , CD_ATTR_2
+           , CD_ATTR_3
+           , CD_ATTR_4
+           , ATTR_DESC_1
+           , ATTR_DESC_2
+           , ATTR_DESC_3
+           , ATTR_DESC_4
+           , CD_DATA
+           , USE_YN
+           , REG_DTE
+           , REG_LOGIN_ID
+           , UPT_DTE
+           , UPT_LOGIN_ID
+        )VALUES(
+              #{cd}
+			, #{ordNo}
+			, #{cdAbb}
+			, #{langCd}
+			, #{parentCd}
+			, #{cdAttr1}
+			, #{cdAttr2}
+			, #{cdAttr3}
+			, #{cdAttr4}
+			, #{attrDesc1}
+			, #{attrDesc2}
+			, #{attrDesc3}
+			, #{attrDesc4}
+			, #{cdData}
+			, #{useYn}
+           , NOW()
+           , 'SYSTEM'
+           , NOW()
+           , 'SYSTEM'
+        )
+    </insert>
+    <update id="updateDtlCode" parameterType="com.vertexid.viself.code.CodeDTO">
+        UPDATE t_sys_code
+        SET UPT_DTE = NOW()
+        , UPT_LOGIN_ID = 'SYSTEM'
+        <if test="ordNo != null and ordNo != ''">
+            , ORD_NO = #{ordNo}
+        </if>
+        <if test="cdAbb != null and cdAbb != ''">
+            , CD_ABB = #{cdAbb}
+        </if>
+        <if test="langCd != null and langCd != ''">
+            , LANG_CD = #{langCd}
+        </if>
+        <if test="parentCd != null and parentCd != ''">
+            , PARENT_CD = #{parentCd}
+        </if>
+        <if test="cdAttr1 != null and cdAttr1 != ''">
+            , CD_ATTR_1 = #{cdAttr1}
+        </if>
+        <if test="cdAttr2 != null and cdAttr2 != ''">
+            , CD_ATTR_2 = #{cdAttr2}
+        </if>
+        <if test="cdAttr3 != null and cdAttr3 != ''">
+            , CD_ATTR_3 = #{cdAttr3}
+        </if>
+        <if test="cdAttr4 != null and cdAttr4 != ''">
+            , CD_ATTR_4 = #{cdAttr4}
+        </if>
+        <if test="attrDesc1 != null and attrDesc1 != ''">
+            , ATTR_DESC_1 = #{attrDesc1}
+        </if>
+        <if test="attrDesc2 != null and attrDesc2 != ''">
+            , ATTR_DESC_2 = #{attrDesc2}
+        </if>
+        <if test="attrDesc3 != null and attrDesc3 != ''">
+            , ATTR_DESC_3 = #{attrDesc3}
+        </if>
+        <if test="attrDesc4 != null and attrDesc4 != ''">
+            , ATTR_DESC_4 = #{attrDesc4}
+        </if>
+        <if test="cdData != null and cdData != ''">
+            , CD_DATA = #{cdData}
+        </if>
+        <if test="useYn != null and useYn != ''">
+            , USE_YN = #{useYn}
+        </if>
+        WHERE cd = #{cd}
+    </update>
+    <delete id="deleteCode" parameterType="com.vertexid.viself.code.CodeDTO">
+        DELETE FROM T_SYS_CODE
+		WHERE CD IN (
+		 SELECT CD FROM V_SYS_CODE
+<!-- 		 WHERE '≫'||CD_PATH||'≫' LIKE '%≫'||#{cd}||'≫%' -->
+	 	 WHERE CONCAT('≫',IFNULL(CD_PATH, ''),'≫') LIKE CONCAT('%≫',IFNULL(#{cd}, ''),'≫%')
+		)
+
+    </delete>
+</mapper>

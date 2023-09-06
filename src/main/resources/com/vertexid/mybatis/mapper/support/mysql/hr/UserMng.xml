@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2023 JaYu.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- User Mapper -->
+<mapper namespace="com.vertexid.support.hr.UserMng.mysql">
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM t_sys_user usr
+            LEFT OUTER JOIN v_sys_org_temp org
+                ON usr.org_id = org.org_id
+            LEFT OUTER JOIN (
+                SELECT mbr.MBR_ID
+                    , group_concat(CAST(acd.AUTH_NM AS VARCHAR(4000)) ORDER BY acd.ORD_NO, acd.AUTH_NM SEPARATOR ',') AS AUTH_NM
+                FROM T_SYS_AUTH_MEMBER mbr
+                    INNER JOIN T_SYS_AUTH_CD acd
+                        ON mbr.AUTH_CD = acd.AUTH_CD
+                WHERE mbr.MBR_TP_CD = 'USER'
+                    AND acd.USE_YN = 'Y'
+                    -- AND acd.AUTH_CLASS_CD = '99'
+                GROUP BY mbr.MBR_ID
+            ) uath
+                ON usr.LOGIN_ID = uath.MBR_ID
+        <where>
+            <if test="#fn=isNotBlank, #fn(schUserNm)">
+                AND UPPER(usr.NM_KO) LIKE CONCAT('%',UPPER(#{schUserNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schOrgNm)">
+                AND UPPER(org.NM_KO) LIKE CONCAT('%',UPPER(#{schOrgNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schUseYn)">
+                AND usr.USE_YN = #{schUseYn}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schUserAuth)">
+                AND usr.LOGIN_ID IN (
+                    SELECT MBR_ID
+                    FROM T_SYS_AUTH_MEMBER
+                    WHERE MBR_TP_CD = 'USER'
+                        AND AUTH_CD = #{schUserAuth}
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        SELECT usr.LOGIN_ID
+            , usr.ORG_ID
+            , usr.NM_KO USER_NM
+            , usr.NM_EN
+            , usr.NM_JA
+            , usr.NM_ZH
+            , usr.USER_TP_CD
+            , usr.SITE_LOCALE
+            , org.NM_KO ORG_NM
+            , usr.USE_YN
+            , CONCAT('일반사용자',
+                CASE
+                    WHEN uath.AUTH_NM IS NULL THEN ''
+                    ELSE CONCAT(',', uath.AUTH_NM)
+                END
+            ) USER_AUTHS
+            , ROW_NUMBER() OVER(ORDER BY
+                 usr.NM_KO ASC,org.org_id_path ASC
+            ) RN
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap">
+        <include refid="Common.countPrefix"/>
+        SELECT usr.LOGIN_ID
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <select id="loadData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        SELECT usr.LOGIN_ID
+            , usr.ORG_ID
+            , usr.NM_KO USER_NM
+            , usr.NM_EN
+            , usr.NM_JA
+            , usr.NM_ZH
+            , usr.USER_TP_CD
+            , usr.SITE_LOCALE
+            , org.NM_KO ORG_NM
+            , usr.USE_YN
+            , usr.memo
+            , usr.email
+            , CONCAT('일반사용자',
+                CASE
+                    WHEN uath.AUTH_NM IS NULL THEN ''
+                    ELSE CONCAT(',', uath.AUTH_NM)
+                END
+            ) USER_AUTHS
+            , CONCAT('CMM_ISJ',
+                CASE
+                    WHEN uath.AUTH_CD IS NULL THEN ''
+                    ELSE CONCAT(',', uath.AUTH_CD)
+                END
+            ) USER_AUTH_CDS
+        FROM t_sys_user usr
+            LEFT OUTER JOIN v_sys_org_temp org
+                ON usr.org_id = org.org_id
+            LEFT OUTER JOIN (
+                SELECT mbr.MBR_ID
+                    , group_concat(CAST(acd.AUTH_CD AS VARCHAR(4000)) ORDER BY acd.ORD_NO, acd.AUTH_CD SEPARATOR ',') AS AUTH_CD
+                    , group_concat(CAST(acd.AUTH_NM AS VARCHAR(4000)) ORDER BY acd.ORD_NO, acd.AUTH_NM SEPARATOR ',') AS AUTH_NM
+                FROM T_SYS_AUTH_MEMBER mbr
+                    INNER JOIN T_SYS_AUTH_CD acd
+                        ON mbr.AUTH_CD = acd.AUTH_CD
+                WHERE mbr.MBR_TP_CD = 'USER'
+                    AND acd.USE_YN = 'Y'
+                    -- AND acd.AUTH_CLASS_CD = '99'
+                GROUP BY mbr.MBR_ID
+            ) uath
+                ON usr.LOGIN_ID = uath.MBR_ID
+        <where>
+            <choose>
+                <when test="#fn=isNotBlank, #fn(loginId)">
+                    AND usr.LOGIN_ID = #{loginId}
+                </when>
+                <otherwise>
+                    AND 1=2
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+    <select id="userData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT LOGIN_ID
+        FROM t_sys_user
+        <where>
+            AND LOGIN_ID  = #{userId}
+        </where>
+    </select>
+
+    <insert id="insert" parameterType="com.vertexid.viself.hr.SimpleUserDTO">
+        INSERT INTO t_sys_user(
+            login_id
+            , nm_ko
+            , use_yn
+            , org_id
+            , user_tp_cd
+            , memo
+            , e_cert
+            , reg_login_id
+            , reg_dte
+            , upt_login_id
+            , upt_dte
+        )VALUES(
+            #{loginId}
+            , #{nmKo}
+            , 'Y'
+            , #{orgId}
+            , '00'
+            , #{memo}
+            , #{cert}
+            , #{loginInfo.loginId}
+            , NOW()
+            , #{loginInfo.loginId}
+            , NOW()
+        )
+    </insert>
+
+    <insert id="update" parameterType="com.vertexid.viself.hr.SimpleUserDTO">
+        UPDATE t_sys_user
+        SET upt_dte = NOW()
+            , upt_login_id = #{loginInfo.loginId}
+            , nm_ko = #{nmKo}
+            , use_yn = IFNULL(#{useYn}, 'Y')
+            , org_id = #{orgId}
+            , user_tp_cd = '00'
+            , memo = #{memo}
+        <where>
+            AND login_id = #{loginId}
+        </where>
+    </insert>
+
+    <insert id="updatePwd" parameterType="com.vertexid.viself.hr.PasswordDTO">
+        UPDATE t_sys_user
+        SET upt_dte = NOW()
+        , upt_login_id = #{loginInfo.loginId}
+        , PWD_CHANGE_DTE = NOW()
+        , old_9w = #{cfmPwd}
+        , LOGIN_PWD = #{newPwd}
+        <where>
+            AND login_id = #{loginId}
+        </where>
+    </insert>
+
+    <insert id="updateECert" parameterType="com.vertexid.viself.hr.SimpleUserDTO">
+        UPDATE t_sys_user
+        SET upt_dte = NOW()
+            , upt_login_id = #{loginInfo.loginId}
+            , e_cert = #{cert}
+            , enc_cert = #{encCert}
+        <where>
+            AND login_id = #{loginId}
+        </where>
+    </insert>
+</mapper>
