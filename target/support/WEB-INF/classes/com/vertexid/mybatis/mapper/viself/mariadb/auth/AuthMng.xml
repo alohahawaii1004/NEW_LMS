@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<mapper namespace="com.vertexid.viself.auth.AuthMng.mariadb">
+
+    <sql id="orderBy">
+        <include refid="Common.cmmFunction"/>
+        <choose>
+            <when test='#fn = isNotBlank, #fn(sort)'>
+                <foreach collection="sorts" index="idx" item="itm" separator=",">
+                    <if test='itm.equals("authCd")'>acd.AUTH_CD</if>
+                    <if test='itm.equals("authNm")'>acd.AUTH_NM</if>
+                    <if test='itm.equals("useYn")'>acd.USE_YN</if>
+                    <choose>
+                        <when test='orders[idx].equals("desc")'>DESC</when>
+                        <otherwise>ASC</otherwise>
+                    </choose>
+                </foreach>
+            </when>
+            <otherwise>
+                acd.ORD_NO ASC
+            </otherwise>
+        </choose>
+    </sql>
+
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM T_SYS_AUTH_CD acd
+        <where>
+            <if test="#fn=isNotBlank, #fn(schAuthCd)">
+                AND UPPER(acd.AUTH_CD) LIKE CONCAT('%',UPPER(#{schAuthCd}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schAuthNm)">
+                AND UPPER(acd.AUTH_NM) LIKE CONCAT('%',UPPER(#{schAuthNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schUseYn)">
+                AND acd.USE_YN = #{schUseYn}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schMbrNm)">
+                AND acd.AUTH_CD IN (
+                    SELECT AUTH_CD
+                    FROM T_SYS_AUTH_MEMBER
+                    WHERE MBR_TP_CD = 'USER'
+                        AND UPPER(USER_NM) LIKE CONCAT('%',UPPER(#{schMbrNm}),'%')
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        SELECT acd.*
+            , ROW_NUMBER() OVER(ORDER BY
+                <include refid="orderBy"/>
+            ) RN
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.countPrefix"/>
+        SELECT acd.AUTH_CD
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <select id="getData" parameterType="map" resultType="paramMap">
+        SELECT acd.*
+            , F_SYS_CD_ABB_LANG('USE_YN', acd.USE_YN) USE_YN_NM
+            , mbr.MEMBER_NMS
+            , mbr.MEMBER_USE
+            , mnu.MENU_NMS
+        FROM T_SYS_AUTH_CD acd
+            LEFT OUTER JOIN (
+                SELECT m.AUTH_CD
+                     , group_concat(CAST(m.USER_NM as VARCHAR(4000)) ORDER BY m.USER_NM, u.USE_YN DESC SEPARATOR ',') MEMBER_NMS
+                     , group_concat(CAST(u.USE_YN as VARCHAR(4000)) ORDER BY m.USER_NM, u.USE_YN DESC SEPARATOR ',') MEMBER_USE
+                     , group_concat(CAST(m.MBR_ID as VARCHAR(4000)) ORDER BY m.USER_NM, u.USE_YN DESC SEPARATOR ',') MEMBER_IDS
+                FROM T_SYS_AUTH_MEMBER m
+                    INNER JOIN V_SYS_USER_TEMP u
+                        ON m.MBR_ID = u.LOGIN_ID
+                WHERE m.MBR_TP_CD = 'USER'
+                GROUP BY m.AUTH_CD
+            ) mbr
+                ON acd.AUTH_CD = mbr.AUTH_CD
+            LEFT OUTER JOIN (
+                SELECT amnu.auth_cd,
+                group_concat(CAST(CONCAT(IFNULL(vmnu.LEVEL_NO, ''),'-',IFNULL(vmnu.LANG_CD, '')) as VARCHAR(4000)) ORDER BY vmnu.ORD_MENU_ID_PATH SEPARATOR ',') MENU_NMS
+                FROM T_SYS_AUTH_MENU amnu
+                    INNER JOIN v_tree_menu vmnu
+                        ON amnu.menu_id = vmnu.menu_id
+                WHERE amnu.alw_cd = 'ALLOW'
+                    AND vmnu.use_yn = '1'
+                GROUP BY amnu.auth_cd
+            ) mnu
+                ON acd.AUTH_CD = mnu.AUTH_CD
+        <where>
+            AND acd.AUTH_CD = #{authCd}
+        </where>
+    </select>
+
+
+    <select id="list" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT
+            AM.*
+        FROM T_SYS_AUTH_CD AM
+        <where>
+            <if test="authCd != null and !authCd.equals('')">
+                   AND AM.AUTH_CD  = #{authCd}
+            </if>
+            AND AM.USE_YN = 'Y'
+        </where>
+        ORDER BY AM.ORD_NO
+    </select>
+
+    <insert id="insert" parameterType="com.vertexid.viself.auth.AuthMngDTO">
+        INSERT INTO T_SYS_AUTH_CD(
+            AUTH_CD
+            , AUTH_NM
+            , AUTH_TP_CD
+            , AUTH_CLASS_CD
+            , REMARK
+            , USE_YN
+            , REG_LOGIN_ID
+            , REG_DTE
+            , UPT_LOGIN_ID
+            , UPT_DTE
+        )VALUES(
+            #{authCd}
+            , #{authNm}
+            , 'USER'
+            , '99'
+            , #{remark}
+            , #{useYn}
+            , #{loginInfo.loginId}
+            , NOW()
+            , #{loginInfo.loginId}
+            , NOW()
+        )
+    </insert>
+    <delete id="delete" parameterType="com.vertexid.viself.auth.AuthMngDTO" >
+        DELETE FROM T_SYS_AUTH_CD
+        WHERE AUTH_CD = #{authCd}
+    </delete>
+    <update id="update" parameterType="com.vertexid.viself.auth.AuthMngDTO" >
+        <include refid="Common.cmmFunction"/>
+        UPDATE T_SYS_AUTH_CD
+        SET UPT_DTE = NOW()
+            , UPT_LOGIN_ID = #{loginInfo.loginId}
+            , AUTH_NM = #{authNm}
+            , USE_YN = #{useYn}
+            , REMARK = #{remark}
+        <if test="#fn=isNotBlank, #fn(ordNo)">
+            , ORD_NO = #{ordNo}
+        </if>
+        WHERE AUTH_CD = #{authCd}
+    </update>
+    <update id="updateSort" parameterType="com.vertexid.viself.auth.AuthMngDTO" >
+        UPDATE T_SYS_AUTH_CD
+        SET ORD_NO = #{ordNo}
+        WHERE AUTH_CD = #{authCd}
+    </update>
+</mapper>

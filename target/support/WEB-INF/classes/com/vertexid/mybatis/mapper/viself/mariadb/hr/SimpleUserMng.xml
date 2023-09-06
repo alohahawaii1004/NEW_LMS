@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JaYu.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<mapper namespace="com.vertexid.viself.hr.SimpleUserMng.mariadb">
+
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM T_SYS_USER usr
+            LEFT OUTER JOIN V_SYS_DEPT_TEMP dept
+                ON usr.dept_cd = dept.dept_cd
+            LEFT OUTER JOIN T_SYS_CODE C1 
+          		ON C1.PARENT_CD  = 'USER_YN'
+          		AND C1.CD_ABB  = (
+          						  CASE usr.USER_TP_CD WHEN '00' THEN usr.USE_YN -- '00' 인사정보 사용자(그 외는 시스템에서 생성한 사용자)
+                    			  ELSE (
+                      					CASE WHEN NOW() >= NVL(usr.USE_ST_DTE, NOW()) AND NOW() <![CDATA[ < ]]> DATE_ADD(NVL( usr.USE_ED_DTE, NOW()), INTERVAL 1 DAY) THEN 'Y'
+                            			ELSE 'N'
+                        				END
+                    				   )
+                				  END
+                				  )
+            LEFT OUTER JOIN (
+                SELECT mbr.MBR_ID
+                    , group_concat(CAST(acd.AUTH_NM AS VARCHAR(4000)) ORDER BY acd.ORD_NO, acd.AUTH_NM SEPARATOR ',') AS AUTH_NM
+                FROM T_SYS_AUTH_MEMBER mbr
+                    INNER JOIN T_SYS_AUTH_CD acd
+                        ON mbr.AUTH_CD = acd.AUTH_CD
+                WHERE mbr.MBR_TP_CD = 'USER'
+                    AND acd.USE_YN = 'Y'
+                    AND acd.AUTH_CLASS_CD = '00'
+                GROUP BY mbr.MBR_ID
+            ) aath
+                ON usr.LOGIN_ID = aath.MBR_ID
+            LEFT OUTER JOIN (
+                SELECT mbr.MBR_ID
+                    , group_concat(CAST(acd.AUTH_NM AS VARCHAR(4000)) ORDER BY acd.ORD_NO, acd.AUTH_NM SEPARATOR ',') AS AUTH_NM
+                FROM T_SYS_AUTH_MEMBER mbr
+                    INNER JOIN T_SYS_AUTH_CD acd
+                        ON mbr.AUTH_CD = acd.AUTH_CD
+                WHERE mbr.MBR_TP_CD = 'USER'
+                    AND acd.USE_YN = 'Y'
+                    AND acd.AUTH_CLASS_CD = '99'
+                GROUP BY mbr.MBR_ID
+            ) uath
+                ON usr.LOGIN_ID = uath.MBR_ID
+        <where>
+            <if test="#fn=isNotBlank, #fn(schMbrNm)">
+                AND UPPER(usr.NM_KO) LIKE CONCAT('%',UPPER(#{schMbrNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schDeptNm)">
+                AND UPPER(dept.NM_KO) LIKE CONCAT('%',UPPER(#{schDeptNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schUseYn)">
+                <![CDATA[
+                AND (
+                    CASE usr.USER_TP_CD
+                        WHEN '00' THEN usr.USE_YN
+                        ELSE (
+                            CASE
+                                WHEN NOW() >= NVL(usr.USE_ST_DTE, NOW()) AND NOW() < DATE_ADD(NVL( usr.USE_ED_DTE, NOW()), INTERVAL 1 DAY) THEN 'Y'
+                                ELSE 'N'
+                            END
+                        )
+                    END
+                ) = #{schUseYn}
+                ]]>
+            </if>
+            <if test="#fn=isNotBlank, #fn(schMngAuth)">
+                AND usr.LOGIN_ID IN (
+                SELECT MBR_ID
+                FROM T_SYS_AUTH_MEMBER
+                WHERE MBR_TP_CD = 'USER'
+                AND AUTH_CD = #{schMngAuth}
+                )
+            </if>
+            <if test="#fn=isNotBlank, #fn(schUserAuth)">
+                AND usr.LOGIN_ID IN (
+                SELECT MBR_ID
+                FROM T_SYS_AUTH_MEMBER
+                WHERE MBR_TP_CD = 'USER'
+                AND AUTH_CD = #{schUserAuth}
+                )
+            </if>
+        </where>
+    </sql>
+
+    <!-- 주의!! 사용자의 모든정보가 있기 때문에 usr.* 로 사용하지 말것! -->
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        <![CDATA[
+        SELECT usr.LOGIN_ID
+            , usr.USER_NO
+            , usr.DEPT_CD
+            , usr.NM_KO
+            , usr.NM_EN
+            , usr.NM_JA
+            , usr.NM_ZH
+            , usr.EMAIL
+            , usr.TEL_NO
+            , usr.MOBILE_NO
+            , usr.POS_CD
+            , usr.DUTY_CD
+            , usr.USER_TP_CD
+            , usr.CHIEF_YN
+            , usr.SITE_LOCALE
+            , usr.CORP_CD
+            , usr.CORP_NM
+            , (
+                CASE usr.USER_TP_CD
+                    WHEN '00' THEN usr.USE_YN -- '00' 인사정보 사용자(그 외는 시스템에서 생성한 사용자)
+                    ELSE (
+                        CASE
+                            WHEN NOW() >= NVL(usr.USE_ST_DTE, NOW()) AND NOW() < DATE_ADD(NVL( usr.USE_ED_DTE, NOW()), INTERVAL 1 DAY) THEN 'Y'
+                            ELSE 'N'
+                        END
+                    )
+                END ) USE_YN
+            , usr.USE_ST_DTE
+            , usr.USE_ED_DTE
+            , usr.MEMO
+            , usr.NM_KO USER_NM
+            , dept.NM_KO DEPT_NM
+            , C1.LANG_CD AS USE_YN_NM
+            , aath.AUTH_NM ADMIN_AUTHS
+            , CONCAT('일반사용자',
+                CASE
+                    WHEN uath.AUTH_NM IS NULL THEN ''
+                    ELSE CONCAT(',', uath.AUTH_NM)
+                END
+            ) USER_AUTHS
+            , ROW_NUMBER() OVER(ORDER BY
+                dept.dept_cd_path ASC, usr.CHIEF_YN DESC, usr.DUTY_CD DESC, usr.POS_CD DESC, usr.NM_KO ASC
+            ) RN
+        ]]>
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap">
+        <include refid="Common.countPrefix"/>
+        SELECT usr.LOGIN_ID
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <select id="list" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        <![CDATA[
+        SELECT usr.LOGIN_ID
+            , usr.USER_NO
+            , usr.DEPT_CD
+            , usr.NM_KO
+            , usr.NM_EN
+            , usr.NM_JA
+            , usr.NM_ZH
+            , usr.EMAIL
+            , usr.TEL_NO
+            , usr.MOBILE_NO
+            , usr.POS_CD
+            , usr.DUTY_CD
+            , usr.USER_TP_CD
+            , usr.CHIEF_YN
+            , usr.SITE_LOCALE
+            , usr.CORP_CD
+            , usr.CORP_NM
+            , (
+                CASE usr.USER_TP_CD
+                    WHEN '00' THEN usr.USE_YN -- '00' 인사정보 사용자(그 외는 시스템에서 생성한 사용자)
+                    ELSE (
+                        CASE
+                            WHEN NOW() >= NVL(usr.USE_ST_DTE, NOW()) AND NOW() < DATE_ADD(NVL( usr.USE_ED_DTE, NOW()), INTERVAL 1 DAY) THEN 'Y'
+                            ELSE 'N'
+                        END
+                    )
+            END ) USE_YN
+            , usr.USE_ST_DTE
+            , usr.USE_ED_DTE
+            , usr.MEMO
+            , DATE_FORMAT(usr.USE_ST_DTE, 'YYYY-MM-DD') STR_USE_ST_DTE
+            , DATE_FORMAT(usr.USE_ED_DTE, 'YYYY-MM-DD') STR_USE_ED_DTE
+            , usr.NM_KO USER_NM
+            , dept.NM_KO DEPT_NM
+            , F_SYS_CD_ABB_LANG('USER_YN',usr.use_yn) USE_YN_NM
+        FROM T_SYS_USER usr
+            LEFT OUTER JOIN V_SYS_DEPT_TEMP dept
+                ON usr.dept_cd = dept.dept_cd
+        ]]>
+        <where>
+            <if test="#fn=isNotBlank, #fn(userId)">
+                AND usr.LOGIN_ID  = #{userId}
+            </if>
+            <if test="#fn=isNotBlank, #fn(deptCd)">
+                AND usr.dept_cd  = #{deptCd}
+            </if>
+            <if test="#fn=isNotBlank, #fn(userNm)">
+                AND usr.NM_KO LIKE CONCAT('%',#{userNm},'%')
+            </if>
+            <choose>
+                <when test="#fn=isNotBlank, #fn(useYn)">
+                    AND use.USE_YN = #{useYn}
+                </when>
+                <otherwise>
+                    AND usr.USE_YN = 'Y'
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+    <insert id="insert" parameterType="com.vertexid.viself.hr.SimpleUserDTO">
+        <![CDATA[
+        INSERT INTO T_SYS_USER(
+            LOGIN_ID
+            , NM_KO
+            , EMAIL
+            , TEL_NO
+            , USER_TP_CD
+            , SITE_LOCALE
+            , USE_ST_DTE
+            , USE_ED_DTE
+            , MEMO
+            , REG_DTE
+            , REG_LOGIN_ID
+            , UPT_DTE
+            , UPT_LOGIN_ID
+        )VALUES(
+            #{loginId}
+            , #{nmKo}
+            , #{email}
+            , #{telNo}
+            , #{userTpCd}
+            , 'KO'
+            , DATE_FORMAT(#{useStDte}, '%Y-%m-%d')
+            , DATE_FORMAT(#{useEdDte}, '%Y-%m-%d')
+            , #{memo}
+            , NOW()
+            , #{loginInfo.loginId}
+            , NOW()
+            , #{loginInfo.loginId}
+        )
+        ]]>
+    </insert>
+
+    <select id="userData" parameterType="map" resultType="paramMap">
+        SELECT usr.*
+            , DATE_FORMAT(usr.USE_ST_DTE, 'YYYY-MM-DD') STR_USE_ST_DTE
+            , DATE_FORMAT(usr.USE_ED_DTE, 'YYYY-MM-DD') STR_USE_ED_DTE
+            , usr.NM_KO USER_NM
+            , dept.NM_KO DEPT_NM
+            , F_SYS_CD_ABB_LANG('USER_YN',usr.use_yn) USE_YN_NM
+            , aath.AUTH_CD AUTH_CD
+        FROM T_SYS_USER usr
+            LEFT OUTER JOIN V_SYS_DEPT_TEMP dept
+                ON usr.dept_cd = dept.dept_cd
+            LEFT OUTER JOIN (
+                SELECT mbr.MBR_ID
+                    , group_concat(CAST(acd.AUTH_CD AS VARCHAR(4000)) ORDER BY acd.ORD_NO, acd.AUTH_CD SEPARATOR ',') AS AUTH_CD
+                FROM T_SYS_AUTH_MEMBER mbr
+                    INNER JOIN T_SYS_AUTH_CD acd
+                        ON mbr.AUTH_CD = acd.AUTH_CD
+                WHERE mbr.MBR_TP_CD = 'USER'
+                    AND acd.USE_YN = 'Y'
+                GROUP BY mbr.MBR_ID
+            ) aath
+                ON usr.LOGIN_ID = aath.MBR_ID
+        <where>
+            AND usr.LOGIN_ID  = #{userId}
+        </where>
+    </select>
+
+    <delete id="deleteVUser" parameterType="com.vertexid.viself.hr.SimpleUserDTO">
+        DELETE FROM v_sys_user
+        <where>
+            AND LOGIN_ID = #{loginId}
+        </where>
+    </delete>
+
+    <insert id="selectVInsert" parameterType="com.vertexid.viself.hr.SimpleUserDTO">
+        INSERT INTO v_sys_user
+        SELECT * FROM v_sys_user_temp
+        <where>
+            AND LOGIN_ID = #{loginId}
+        </where>
+    </insert>
+
+    <update id="update" parameterType="com.vertexid.viself.hr.SimpleUserDTO">
+        <include refid="Common.cmmFunction"/>
+        UPDATE T_SYS_USER
+        SET UPT_DTE = NOW()
+            , UPT_LOGIN_ID = #{loginInfo.loginId}
+            , NM_KO = #{nmKo}
+            , EMAIL = #{email}
+            , TEL_NO = #{telNo}
+            , USE_ST_DTE = DATE_FORMAT(#{useStDte}, '%Y-%m-%d')
+            , USE_ED_DTE = DATE_FORMAT(#{useEdDte}, '%Y-%m-%d')
+        <where>
+            AND LOGIN_ID = #{loginId}
+        </where>
+    </update>
+
+</mapper>

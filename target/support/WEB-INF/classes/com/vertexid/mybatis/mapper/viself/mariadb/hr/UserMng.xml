@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<mapper namespace="com.vertexid.viself.hr.UserMng.mariadb">
+
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM T_SYS_USER usr
+            LEFT OUTER JOIN V_SYS_DEPT_TEMP dept
+                ON usr.dept_cd = dept.dept_cd
+            LEFT OUTER JOIN (
+                SELECT mbr.MBR_ID
+                    , LISTAGG(CAST(acd.AUTH_NM AS VARCHAR2(4000)), ',') WITHIN GROUP (ORDER BY acd.ORD_NO, acd.AUTH_NM) AS AUTH_NM
+                FROM T_SYS_AUTH_MEMBER mbr
+                    INNER JOIN T_SYS_AUTH_CD acd
+                        ON mbr.AUTH_CD = acd.AUTH_CD
+                WHERE mbr.MBR_TP_CD = 'USER'
+                    AND acd.USE_YN = 'Y'
+                    AND acd.AUTH_CLASS_CD = '00'
+                GROUP BY mbr.MBR_ID
+            ) aath
+                ON usr.LOGIN_ID = aath.MBR_ID
+            LEFT OUTER JOIN (
+                SELECT mbr.MBR_ID
+                    , LISTAGG(CAST(acd.AUTH_NM AS VARCHAR2(4000)), ',') WITHIN GROUP (ORDER BY acd.ORD_NO, acd.AUTH_NM) AS AUTH_NM
+                FROM T_SYS_AUTH_MEMBER mbr
+                    INNER JOIN T_SYS_AUTH_CD acd
+                        ON mbr.AUTH_CD = acd.AUTH_CD
+                WHERE mbr.MBR_TP_CD = 'USER'
+                    AND acd.USE_YN = 'Y'
+                    AND acd.AUTH_CLASS_CD = '99'
+                GROUP BY mbr.MBR_ID
+            ) uath
+                ON usr.LOGIN_ID = uath.MBR_ID
+        <where>
+            <if test="#fn=isNotBlank, #fn(schMbrNm)">
+                AND UPPER(usr.NM_KO) LIKE CONCAT('%',UPPER(#{schMbrNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schDeptNm)">
+                AND UPPER(dept.NM_KO) LIKE CONCAT('%',UPPER(#{schDeptNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schUseYn)">
+                AND usr.USE_YN = #{schUseYn}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schMngAuth)">
+                AND usr.LOGIN_ID IN (
+                    SELECT MBR_ID
+                    FROM T_SYS_AUTH_MEMBER
+                    WHERE MBR_TP_CD = 'USER'
+                        AND AUTH_CD = #{schMngAuth}
+                )
+            </if>
+            <if test="#fn=isNotBlank, #fn(schUserAuth)">
+                AND usr.LOGIN_ID IN (
+                    SELECT MBR_ID
+                    FROM T_SYS_AUTH_MEMBER
+                    WHERE MBR_TP_CD = 'USER'
+                        AND AUTH_CD = #{schUserAuth}
+                )
+            </if>
+        </where>
+    </sql>
+
+    <!-- 주의!! 사용자의 모든정보가 있기 때문에 usr.* 로 사용하지 말것! -->
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        SELECT usr.LOGIN_ID
+            , usr.USER_NO
+            , usr.DEPT_CD
+            , usr.NM_KO
+            , usr.NM_EN
+            , usr.NM_JA
+            , usr.NM_ZH
+            , usr.EMAIL
+            , usr.TEL_NO
+            , usr.MOBILE_NO
+            , usr.POS_CD
+            , usr.DUTY_CD
+            , usr.USER_TP_CD
+            , usr.CHIEF_YN
+            , usr.SITE_LOCALE
+            , usr.CORP_CD
+            , usr.CORP_NM
+            , usr.USE_YN
+            , usr.USE_ST_DTE
+            , usr.USE_ED_DTE
+            , usr.MEMO
+            , usr.NM_KO USER_NM
+            , dept.NM_KO DEPT_NM
+            , F_SYS_CD_ABB_LANG('USER_YN',usr.use_yn) USE_YN_NM
+            , aath.AUTH_NM ADMIN_AUTHS
+            , uath.AUTH_NM USER_AUTHS
+            , ROW_NUMBER() OVER(ORDER BY
+                dept.dept_cd_path ASC, usr.CHIEF_YN DESC, usr.DUTY_CD DESC, usr.POS_CD DESC
+            ) RN
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap">
+        <include refid="Common.countPrefix"/>
+        SELECT usr.LOGIN_ID
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <select id="list" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT A.*
+        FROM (
+            SELECT ROW_NUMBER() OVER(ORDER BY  O.user_nm) AS ROWNUM
+                , O.LOGIN_ID
+				, O.USER_NO
+				, O.DEPT_CD
+				, O.LOGIN_PWD
+				, O.NM_KO
+				, O.NM_EN
+				, O.NM_JA
+				, O.NM_ZH
+				, O.EMAIL
+				, O.TEL_NO
+				, O.MOBILE_NO
+				, O.POS_CD
+				, O.DUTY_CD
+				, O.USER_TP_CD
+				, O.CHIEF_YN
+				, O.SITE_LOCALE
+				, O.CORP_CD
+				, O.CORP_NM
+				, O.LOGIN_IP
+				, TO_CHAR(O.PWD_ST_DTE, 'YYYY-MM-DD') AS PWD_ST_DTE
+				, TO_CHAR(O.PWD_ED_DTE, 'YYYY-MM-DD') AS PWD_ED_DTE
+				, O.LOGIN_TRY_CNT
+				, O.USE_YN
+				, O.REG_DTE
+				, O.REG_LOGIN_ID
+				, O.UPT_DTE
+				, O.UPT_LOGIN_ID
+                , COUNT(*) OVER() AS TTL
+            FROM t_sys_user o
+        ) A
+        WHERE rownum BETWEEN ((CAST(#{page} AS NUMERIC) - 1) * CAST(#{rows} AS NUMERIC))+1 AND (CAST(#{page} AS NUMERIC) * CAST(#{rows} AS NUMERIC))
+    </select>
+
+    <!-- 주의!! 사용자정보는 cmmJsonCtrl 로 직접 가져갈 수 없도록 한다. -->
+    <select id="userData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT *
+          FROM v_sys_user
+        <where>
+           <if test="userId != null and !userId.equals('')">
+			   AND LOGIN_ID  = #{userId}
+			</if>
+        </where>
+    </select>
+
+    <!-- 준법감시인 구하기 - 자기매매,특정증권 메일 발송 시 준법감시인이 발송자여야함. 미래에셋생명 -->
+    <select id="cmsCcdUserId" parameterType="string" resultType="string" fetchSize="1000">
+		SELECT LOGIN_ID 
+		FROM V_SYS_USER 
+		WHERE AUTH_CD LIKE '%CMS_CCD%'
+		AND USE_YN ='Y'
+		LIMIT 1
+    </select>
+
+    <!-- 휴대폰번호 구하기 - SMS 발송. 미래에셋생명-->
+    <select id="userMoblieNo" parameterType="string" resultType="paramMap" fetchSize="1000">
+		SELECT SUBSTRING(MOBILE_NO, 1, 3) AS MOBILE_NO_S 
+			 , SUBSTRING(MOBILE_NO, 4, 4) AS MOBILE_NO_M
+			 , SUBSTRING(MOBILE_NO, 8, 4) AS MOBILE_NO_L
+		FROM V_SYS_USER 
+		WHERE LOGIN_ID = #{userId}
+    </select>
+    
+    <!-- 자기매매담당자와 컴플라이언스팀 팀장, 요청자 구하기 -->
+    <select id="getSelectCompliance" parameterType="string" resultType="paramMap">
+        SELECT DISTINCT LOGIN_ID 
+		FROM(SELECT LOGIN_ID 
+			 FROM V_SYS_USER 
+			 WHERE AUTH_CD LIKE '%CMS_CFT%'
+			 UNION ALL
+			 SELECT LOGIN_ID 
+			 FROM V_SYS_USER 
+			 WHERE DEPT_CD IN(SELECT DISTINCT DEPT_CD 
+			 				  FROM V_SYS_USER 
+			 				  WHERE AUTH_CD LIKE '%CMS_CFT%')
+			 AND CHIEF_YN ='Y'
+			 UNION ALL
+			 SELECT APR_LOGIN_ID 
+			 FROM T_SYS_APR_LINE
+			 WHERE SOL_MAS_UID = #{solMasUid} 
+			 AND DOC_UID =  #{docUid}
+			 AND APR_TP ='S'
+			)A
+    </select>
+
+    <!-- 자기매매담당자와 컴플라이언스팀 팀장, 결재자, 준법감시인 구하기 -->
+    <select id="getSelectComplianceCcm" parameterType="string" resultType="paramMap">
+        SELECT DISTINCT LOGIN_ID 
+		FROM(SELECT LOGIN_ID 
+			 FROM V_SYS_USER 
+			 WHERE AUTH_CD LIKE '%CMS_CFT%'
+			 UNION ALL
+			 SELECT LOGIN_ID 
+			 FROM V_SYS_USER 
+			 WHERE AUTH_CD LIKE '%CMS_CCM%'			 
+			 UNION ALL
+			 SELECT LOGIN_ID 
+			 FROM V_SYS_USER 
+			 WHERE DEPT_CD IN(SELECT DISTINCT DEPT_CD 
+			 				  FROM V_SYS_USER 
+			 				  WHERE AUTH_CD LIKE '%CMS_CFT%')
+			 AND CHIEF_YN ='Y'
+			 UNION ALL
+			 SELECT APR_LOGIN_ID 
+			 FROM T_SYS_APR_LINE
+			 WHERE SOL_MAS_UID = #{solMasUid} 
+			 AND DOC_UID =  #{docUid}
+			 AND APR_TP ='G'
+			)A
+    </select>
+
+    <!-- 직위 명칭 구하기 -->
+    <select id="getPosNmData" parameterType="string" resultType="string">
+		SELECT L1.KO AS POS_NM
+		FROM V_SYS_USER V
+		LEFT OUTER JOIN T_SYS_LANG_MAS L1 
+			ON L1.LANG_CD = V.POS_LANG_CD  
+        WHERE V.LOGIN_ID = #{loginId}
+    </select>
+
+    <insert id="insert" parameterType="com.vertexid.viself.hr.UserDTO">
+        INSERT INTO t_sys_user(
+            user_id
+            , user_nm
+            , use_enable
+            , user_tp_cd
+            , reg_user_id
+            , reg_dtime
+            , upt_user_id
+            , upt_dtime
+        )VALUES(
+            #{userId}
+            , #{userNm}
+            , #{useEnable}
+            , 'TEST'
+            , 'SYSTEM'
+            , CURRENT_TIMESTAMP
+            , 'SYSTEM'
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="updateTmpPwd" parameterType="com.vertexid.viself.hr.UserDTO">
+        UPDATE t_sys_user
+        SET login_pwd = #{tempPwd}
+        	, PWD_ST_DTE = NOW()
+			, PWD_ED_DTE = ADD_MONTHS(NOW(),3)
+            , upt_login_id = 'SYSTEM'
+            , upt_dte = CURRENT_TIMESTAMP
+        WHERE login_id = #{userId}
+    </update>
+
+    <update id="updatePwd" parameterType="com.vertexid.viself.hr.UserDTO">
+        UPDATE T_SYS_USER
+        SET LOGIN_PWD = #{chgPwd}
+        	, PWD_ST_DTE = NOW()
+			, PWD_ED_DTE = ADD_MONTHS(NOW(),3)
+            , UPT_LOGIN_ID = 'SYSTEM'
+            , UPT_DTE = NOW()
+        WHERE LOGIN_ID = #{userId}
+    </update>
+	<!-- 	v_sys_user 부분도 바꿔야 하기 때문에 만들었습니다.
+			위의 tmppwd가 어떨때 쓰는지 몰라 새로 만들었습니다. -->
+    <update id="updateVsysPwd" parameterType="com.vertexid.viself.hr.UserDTO">
+        UPDATE V_SYS_USER
+        SET LOGIN_PWD = #{chgPwd}
+        	, PWD_ST_DTE = NOW()
+			, PWD_ED_DTE = ADD_MONTHS(NOW(),3)
+            , UPT_LOGIN_ID = 'SYSTEM'
+            , UPT_DTE = NOW()
+        WHERE LOGIN_ID = #{userId}
+    </update>
+
+    <delete id="deleteOldestPwdHis">
+        DELETE
+
+    </delete>
+
+    <insert id="insertPwdHis">
+
+    </insert>
+
+	<update id="updateTsysNmEn" parameterType="com.vertexid.viself.hr.UserDTO">
+        UPDATE T_SYS_USER
+        SET  UPT_LOGIN_ID = 'SYSTEM'
+            , UPT_DTE = NOW()
+            , NM_EN = #{userNmEn}
+            , NAT_NM = #{natNm}
+        WHERE LOGIN_ID = #{userId}
+    </update>
+
+	<update id="updateVsysNmEn" parameterType="com.vertexid.viself.hr.UserDTO">
+        UPDATE V_SYS_USER
+        SET  UPT_LOGIN_ID = 'SYSTEM'
+            , UPT_DTE = NOW()
+            , NM_EN = #{userNmEn}
+            , NAT_NM = #{natNm}
+        WHERE LOGIN_ID = #{userId}
+    </update>
+
+	<delete id="deleteVUser" >
+        DELETE FROM v_sys_user
+    </delete>
+
+    <insert id="selectVInsert" >
+        INSERT INTO v_sys_user
+        SELECT * FROM v_sys_user_temp
+    </insert>
+
+    <update id="udpatePassword"
+            parameterType="com.vertexid.viself.hr.UserDTO"
+            statementType="CALLABLE">
+        {
+            CALL pkg_sys_user.sp_chnage_password_s(
+                 #{userId}
+                , #{userPwd}
+                , #{user.loginId}
+                , #{errYn, mode=OUT, jdbcType=VARCHAR, javaType=String}
+                , #{errCd, mode=OUT, jdbcType=VARCHAR, javaType=String}
+                , #{errMsg, mode=OUT, jdbcType=VARCHAR, javaType=String}
+            )
+        }
+    </update>
+</mapper>

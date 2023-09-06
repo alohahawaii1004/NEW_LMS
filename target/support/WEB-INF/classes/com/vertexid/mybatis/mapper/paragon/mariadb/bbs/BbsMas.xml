@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- 게시판 Mapper -->
+<mapper namespace="com.vertexid.paragon.bbs.BbsMas.mariadb">
+
+    <sql id="fromNWhereConditions">
+    	<include refid="Common.cmmFunction"/>
+        FROM T_CMM_BOARD bbs
+            LEFT OUTER JOIN V_SYS_USER vusr
+                ON bbs.REG_LOGIN_ID = vusr.LOGIN_ID
+        <where>
+            AND bbs.BBS_TP_CD = #{bbsTp}
+            AND bbs.BBS_CD = #{bbsCd}
+            <if test='@org.apache.commons.lang3.StringUtils@isNotBlank(bbsSchType)'>
+                AND bbs.BBS_CTGRY_CD = #{bbsSchType}
+            </if>
+            <if test='@org.apache.commons.lang3.StringUtils@isNotBlank(bbsTit)'>
+                AND bbs.BBS_TIT LIKE CONCAT('%',UPPER(#{bbsTit}),'%')
+            </if>
+            <if test='@org.apache.commons.lang3.StringUtils@isNotBlank(schFromRegDte)'>
+                AND bbs.REG_DTE <![CDATA[ >= ]]> STR_TO_DATE(#{schFromRegDte}, '%Y-%m-%d')
+            </if>
+            <if test='@org.apache.commons.lang3.StringUtils@isNotBlank(schToRegDte)'>
+                AND bbs.REG_DTE <![CDATA[ <= ]]> DATE_ADD(STR_TO_DATE(#{schToRegDte}, '%Y-%m-%d'), INTERVAL 1 DAY)
+            </if>
+            <choose>
+                 <when test="#fn=isNotBlank, #fn(bbsSchGbn)">
+                     <choose>
+                         <when test='bbsSchGbn.equals("TITLE")'>
+                             AND UPPER(bbs.BBS_TIT) LIKE CONCAT('%',UPPER(#{bbsSchWord}),'%')
+                         </when>
+                         <when test='bbsSchGbn.equals("CONTENT")'>
+                             AND UPPER(F_SYS_HTML(bbs.BBS_CONTENT)) LIKE CONCAT('%',UPPER(#{bbsSchWord}),'%')
+                         </when>
+                         <when test='bbsSchGbn.equals("REGNM")'>
+                             AND UPPER(vusr.NM_KO) LIKE CONCAT('%',UPPER(#{bbsSchWord}),'%')
+                         </when>
+                         <otherwise>
+                             AND (
+                                 UPPER(bbs.BBS_TIT) LIKE CONCAT('%',UPPER(#{bbsSchWord}),'%')
+                                 OR UPPER(F_SYS_HTML(bbs.BBS_CONTENT)) LIKE CONCAT('%',UPPER(#{bbsSchWord}),'%')
+                                 OR UPPER(vusr.NM_KO) LIKE CONCAT('%',UPPER(#{bbsSchWord}),'%')
+                             )
+                         </otherwise>
+                     </choose>
+                 </when>
+             </choose>
+                    
+            AND bbs.BBS_USE_YN = 'Y'
+        </where>
+    </sql>
+
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        <![CDATA[
+        SELECT bbs.BBS_UID
+			 , bbs.BBS_TP_CD
+			 , bbs.BBS_CD
+			 , bbs.BBS_CTGRY_CD
+			 , bbs.BBS_TIT
+			 , bbs.BBS_TOP_YN
+			 , ( SELECT COUNT(*)
+			       FROM T_SYS_ATCH_FILE
+			      WHERE REL_UID = bbs.BBS_UID
+			        AND FILE_TP_CD  = 'LMS/BBS'
+			        AND USE_YN = 'Y' ) AS ATTACH_FILE_CNT
+			 , IFNULL(bbs.BBS_HIT_CNT, 0) AS BBS_HIT_CNT
+			 , vusr.DSP_NM_KO REG_DSP_NM
+			 , vusr.DEPT_NM_KO REG_DEPT_NM
+             , F_SYS_CD_LANG(bbs.BBS_TP_CD) BBS_TP_NM
+             , F_SYS_CD_LANG(bbs.BBS_CD) BBS_NM
+             , F_SYS_CD_LANG(bbs.BBS_CTGRY_CD) BBS_CTGRY_NM
+             , DATE_FORMAT(bbs.REG_DTE, '%Y-%m-%d') STR_REG_DTE
+             , ROW_NUMBER() OVER(ORDER BY bbs.BBS_TOP_YN DESC, bbs.REG_DTE DESC ) RN
+        ]]>
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.countPrefix"/>
+        SELECT bbs.BBS_UID
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <select id="popupList" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT bbs.BBS_TIT
+             , bbs.BBS_UID
+          FROM T_CMM_BOARD bbs
+          LEFT OUTER JOIN V_SYS_USER vusr
+            ON bbs.REG_LOGIN_ID = vusr.LOGIN_ID
+        <where>
+        <![CDATA[
+           AND bbs.BBS_TP_CD = #{bbsTpCd}
+           AND bbs.BBS_CD = #{bbsCd}
+           AND bbs.BBS_USE_YN = 'Y'
+           AND bbs.BBS_POPUP_YN = 'Y'
+           AND NOW() >= bbs.BBS_POPUP_ST_DTE
+           AND NOW() < DATE_ADD(bbs.BBS_POPUP_ED_DTE, INTERVAL 1 DAY)
+        ]]>
+        </where>
+         ORDER BY bbs.BBS_POPUP_ST_DTE
+    </select>
+
+    <!-- 게시글 상세보기 -->
+    <select id="getData" parameterType="map" resultType="paramMap">
+        <![CDATA[
+        SELECT bbs.BBS_UID
+             , bbs.BBS_TP_CD
+             , bbs.BBS_CD
+             , bbs.BBS_CTGRY_CD
+             , bbs.BBS_TIT
+             , bbs.BBS_CONTENT
+             , IFNULL(bbs.BBS_HIT_CNT, 0) AS BBS_HIT_CNT
+             , bbs.BBS_TOP_YN
+             , bbs.BBS_POPUP_YN
+             , bbs.BBS_POPUP_ST_DTE
+             , bbs.BBS_POPUP_ED_DTE
+             , bbs.BBS_USE_YN
+             , vusr.DSP_NM_KO REG_DSP_NM
+             , F_SYS_CD_LANG(bbs.BBS_TP_CD) BBS_TP_NM
+             , F_SYS_CD_LANG(bbs.BBS_CD) BBS_NM
+             , F_SYS_CD_LANG(bbs.BBS_CTGRY_CD) BBS_CTGRY_NM
+             , DATE_FORMAT(bbs.REG_DTE, '%Y-%m-%d') STR_REG_DTE             
+             , vupsr.DSP_NM_KO UPT_DSP_NM
+             , DATE_FORMAT(bbs.UPT_DTE, '%Y-%m-%d') STR_UPT_DTE
+             , DATE_FORMAT(bbs.BBS_POPUP_ST_DTE, '%Y-%m-%d') AS STR_BBS_POPUP_ST_DTE
+             , DATE_FORMAT(bbs.BBS_POPUP_ED_DTE, '%Y-%m-%d') AS STR_BBS_POPUP_ED_DTE
+          FROM T_CMM_BOARD bbs
+          LEFT OUTER JOIN V_SYS_USER vusr
+            ON bbs.REG_LOGIN_ID = vusr.LOGIN_ID
+          LEFT OUTER JOIN V_SYS_USER vupsr
+            ON bbs.UPT_LOGIN_ID = vupsr.LOGIN_ID
+        ]]>
+        <where>
+            AND bbs.BBS_UID = #{bbsUid}
+            AND bbs.BBS_USE_YN = 'Y'
+        </where>
+    </select>
+
+    <!-- 게시글 저장 -->
+    <insert id="insert" parameterType="com.vertexid.paragon.bbs.BbsMasDTO" >
+        INSERT INTO T_CMM_BOARD(
+              BBS_UID
+            , BBS_TP_CD
+            , BBS_CD
+            , BBS_CTGRY_CD
+            , BBS_TIT
+            , BBS_CONTENT
+            , BBS_HIT_CNT
+            , BBS_TOP_YN
+            , BBS_POPUP_YN
+            , BBS_POPUP_ST_DTE
+            , BBS_POPUP_ED_DTE
+            , BBS_USE_YN
+            , REG_DTE
+            , REG_LOGIN_ID
+            , UPT_DTE
+            , UPT_LOGIN_ID
+        )VALUES(
+            #{bbsUid}
+            , #{bbsTpCd}
+            , #{bbsCd}
+            , #{bbsCtgryCd}
+            , #{bbsTit}
+            , #{bbsContent}
+            , #{bbsHitCnt}
+            , #{bbsTopYn}
+            , #{bbsPopupYn}
+            , DATE_FORMAT(#{bbsPopupStDte}, '%Y-%m-%d')
+            , DATE_FORMAT(#{bbsPopupEdDte}, '%Y-%m-%d')
+            , 'Y'
+            , NOW()
+            , #{loginInfo.loginId}
+            , NOW()
+            , #{loginInfo.loginId}
+        )
+    </insert>
+
+    <!-- 게시글 수정 -->
+    <update id="update" parameterType="com.vertexid.paragon.bbs.BbsMasDTO" >
+        UPDATE T_CMM_BOARD
+           SET UPT_DTE = NOW()
+             , UPT_LOGIN_ID = #{loginInfo.loginId}
+             , BBS_TIT = #{bbsTit}
+             , BBS_CONTENT = #{bbsContent}
+             , BBS_TOP_YN = #{bbsTopYn}
+             , BBS_POPUP_YN = #{bbsPopupYn}
+             , BBS_POPUP_ST_DTE = DATE_FORMAT(#{bbsPopupStDte}, '%Y-%m-%d')
+             , BBS_POPUP_ED_DTE = DATE_FORMAT(#{bbsPopupEdDte}, '%Y-%m-%d')
+             , BBS_CTGRY_CD = #{bbsCtgryCd}
+         WHERE BBS_UID = #{bbsUid}
+    </update>
+
+    <update id="updateHit" parameterType="com.vertexid.paragon.bbs.BbsMasDTO">
+        UPDATE T_CMM_BOARD
+        SET BBS_HIT_CNT = ifnull(BBS_HIT_CNT,0) + 1
+        WHERE BBS_UID = #{bbsUid}
+    </update>
+
+    <!-- 게시글 삭제 -->
+    <update id="delete" parameterType="com.vertexid.paragon.bbs.BbsMasDTO" >
+        UPDATE T_CMM_BOARD
+        SET BBS_USE_YN='N'
+        WHERE BBS_UID = #{bbsUid}
+    </update>
+</mapper>

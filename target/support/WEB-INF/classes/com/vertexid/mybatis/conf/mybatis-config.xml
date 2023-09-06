@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <!--
+      ~ Copyright 2022 JAYU.space
+      ~
+      ~ Licensed under the Apache License, Version 2.0 (the "License");
+      ~ you may not use this file except in compliance with the License.
+      ~ You may obtain a copy of the License at
+      ~
+      ~ http://www.apache.org/licenses/LICENSE-2.0
+      ~
+      ~ Unless required by applicable law or agreed to in writing, software
+      ~ distributed under the License is distributed on an "AS IS" BASIS,
+      ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+      ~ See the License for the specific language governing permissions and
+      ~ limitations under the License.
+      -->
+    <settings>
+        <setting name="cacheEnabled" value="true" />
+        <setting name="lazyLoadingEnabled" value="false" />
+        <setting name="multipleResultSetsEnabled" value="true" />
+        <setting name="defaultExecutorType" value="REUSE" />
+        <!-- 아래값(useGeneratedKeys)을 true로 설정하면 오라클 JDBC 드라이버에서는 delete시 에러 발생합니다. -->
+        <setting name="useGeneratedKeys" value="false" />
+        <!-- mapUnderscoreToCamelCase 는 VO, DTO는 지원하나 Map 은 지원하지 않음 (Mybatis 공식) -->
+        <setting name="mapUnderscoreToCamelCase" value="true" />
+        <setting name="jdbcTypeForNull" value="NULL" />
+        <!-- 컬럼값이 null이더라도 result Map에 포함시킴 -->
+        <setting name="callSettersOnNulls" value="true"/>
+        <!-- logger 사용시 prefix 설정 -->
+        <!--<setting name="logPrefix" value="mybatis.mapper:"/>-->
+        <!-- logger 설정 (SLF4J | LOG4J | LOG4J2 | JDK_LOGGING | COMMONS_LOGGING | STDOUT_LOGGING | NO_LOGGING) -->
+        <!--     기본logger 사용시 Query가 1줄로 출력되어 알아보기 힘들기 때문에 NO_LOGGING으로 설정하고 Plugin으로 사용 -->
+        <setting name="logImpl" value="NO_LOGGING"/>
+    </settings>
+
+    <typeAliases>
+        <typeAlias type="com.vertexid.commons.utils.ParamMap" alias="paramMap"/>
+    </typeAliases>
+
+    <typeHandlers>
+        <typeHandler handler="com.vertexid.mybatis.DateTypeHandler"
+                     javaType="java.lang.Object" jdbcType="DATE" />
+        <typeHandler handler="com.vertexid.mybatis.TimestampTypeHandler"
+                     javaType="java.lang.Object" jdbcType="TIMESTAMP" />
+        <typeHandler handler="com.vertexid.mybatis.ClobTypeHandler"
+                     javaType="java.lang.Object" jdbcType="CLOB" />
+        <typeHandler handler="com.vertexid.mybatis.BlobTypeHandler"
+                     javaType="byte[]" jdbcType="BLOB" />
+    </typeHandlers>
+
+    <!-- mapper 설정은 spring 에 설정해서 아래 부분은 주석 -->
+    <!--<mappers>
+        <mapper resource="kr/pe/kihwa/conf/sql/code/CodeType.xml"/>
+    </mappers>-->
+
+    <plugins>
+        <!-- log plugin: 기본 로거보다 Query logging 을 좋게 표시 -->
+        <plugin interceptor="com.vertexid.mybatis.LogInterceptor"></plugin>
+    </plugins>
+</configuration>

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2023 JaYu.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- SM System Manager Mapper -->
+<mapper namespace="com.vertexid.support.system.SysUserMng.mysql">
+    <sql id="fromTargetNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM t_sys_user usr
+        <where>
+            <if test="#fn=isNotBlank, #fn(schUsrNm)">
+                AND usr.NM_KO LIKE CONCAT('%', #{schUsrNm}, '%')
+            </if>
+                AND usr.ORG_ID = #{orgId}
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM t_support_sys_user
+                    WHERE LOGIN_ID = usr.LOGIN_ID
+                        AND SYSTEM_ID = #{systemId}
+                )
+        </where>
+    </sql>
+
+    <select id="getTargetListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        <![CDATA[
+        SELECT usr.ORG_ID
+            , usr.LOGIN_ID
+            , usr.USE_YN
+            , usr.NM_KO
+            , ROW_NUMBER() OVER(ORDER BY usr.NM_KO, usr.LOGIN_ID) RN
+        ]]>
+        <include refid="fromTargetNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countTargetData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.countPrefix"/>
+        SELECT usr.LOGIN_ID
+        <include refid="fromTargetNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM t_support_sys_user susr
+            INNER JOIN t_sys_user usr
+                ON susr.LOGIN_ID = usr.LOGIN_ID
+        <where>
+            <if test="#fn=isNotBlank, #fn(orgId)">
+                AND usr.ORG_ID = #{orgId}
+            </if>
+            <if test="#fn=isNotBlank, #fn(systemId)">
+                AND susr.SYSTEM_ID = #{systemId}
+            </if>
+            <if test="#fn=isNotBlank, #fn(loginId)">
+                AND susr.LOGIN_ID = #{loginId}
+            </if>
+        </where>
+    </sql>
+
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        <![CDATA[
+        SELECT susr.SYSTEM_ID
+            , usr.ORG_ID
+            , usr.LOGIN_ID
+            , usr.USE_YN
+            , usr.NM_KO
+            , usr.ENC_CERT
+            , ROW_NUMBER() OVER(ORDER BY usr.NM_KO, usr.LOGIN_ID) RN
+        ]]>
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.countPrefix"/>
+        SELECT susr.LOGIN_ID
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <select id="getUserList" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        SELECT susr.SYSTEM_ID
+            , usr.ORG_ID
+            , usr.LOGIN_ID
+            , usr.USE_YN
+            , usr.NM_KO
+        FROM t_support_sys_user susr
+            INNER JOIN t_sys_user usr
+                ON susr.LOGIN_ID = usr.LOGIN_ID
+        <where>
+            <if test="#fn=isNotBlank, #fn(orgId)">
+                AND usr.ORG_ID = #{orgId}
+            </if>
+            <if test="#fn=isNotBlank, #fn(systemId)">
+                AND susr.SYSTEM_ID = #{systemId}
+            </if>
+            <if test="#fn=isNotBlank, #fn(loginId)">
+                AND susr.LOGIN_ID = #{loginId}
+            </if>
+        </where>
+        ORDER BY usr.NM_KO, usr.LOGIN_ID
+    </select>
+
+    <select id="getNewUserId" resultType="string">
+        SELECT F_SYS_USER_ID() AS LOGIN_ID
+    </select>
+
+    <insert id="insert" parameterType="com.vertexid.support.system.SupportSysUserDTO">
+        INSERT INTO t_support_sys_user(
+            SYSTEM_ID
+            , LOGIN_ID
+            , REG_DTE
+            , REG_LOGIN_ID
+            , UPT_DTE
+            , UPT_LOGIN_ID
+        )VALUES(
+             #{systemId}
+           , #{loginId}
+           , NOW()
+           , #{loginInfo.loginId}
+           , NOW()
+           , #{loginInfo.loginId}
+        )
+    </insert>
+
+    <delete id="delete" parameterType="com.vertexid.support.system.SupportSysUserDTO">
+        DELETE FROM t_support_sys_user
+        <where>
+            AND SYSTEM_ID = #{systemId}
+            AND LOGIN_ID = #{loginId}
+        </where>
+    </delete>
+
+
+    <select id="getSysUserInfo" parameterType="map" resultType="paramMap">
+        SELECT tssu.*
+            , (CASE WHEN DATEDIFF(tssi.SM_ENDDT, NOW()) <![CDATA[ < ]]> 0 THEN 'Y' ELSE 'N' END ) EXP_YN
+        FROM t_support_sys_user tssu
+            INNER JOIN t_support_sys_info tssi
+                ON tssu.SYSTEM_ID = tssi.SYSTEM_ID
+            INNER JOIN t_sys_user tsu
+                ON tssu.LOGIN_ID = tsu.LOGIN_ID
+        <where>
+            AND tsu.USE_YN = 'Y'
+            AND tssu.LOGIN_ID = #{loginId}
+        </where>
+    </select>
+</mapper>

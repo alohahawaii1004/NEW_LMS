@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JaYu.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- 문서보관함 Mapper -->
+<mapper namespace="com.vertexid.paragon.log.SolAccLog.mariadb">
+
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM T_SYS_ACC_LOG tal
+        <where>
+            <if test="#fn=isNotBlank, #fn(schFromAccDte)">
+                <![CDATA[
+                AND tal.ACC_DTE >= DATE_FORMAT(#{schFromAccDte}, '%Y-%m-%d')
+                ]]>
+            </if>
+            <if test="#fn=isNotBlank, #fn(schToAccDte)">
+                <![CDATA[
+                AND tal.ACC_DTE <= DATE_FORMAT(#{schToAccDte}, '%Y-%m-%d')
+                ]]>
+            </if>
+            <if test="#fn=isNotBlank, #fn(schTpCd)">
+                AND tal.TP_CD = #{schTpCd}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schReqCorpNm)">
+                AND UPPER(tal.REQ_CORP_NM) LIKE CONCAT('%',UPPER(#{schReqCorpNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schReqDeptNm)">
+                AND UPPER(tal.REQ_DEPT_NM) LIKE CONCAT('%',UPPER(#{schReqDeptNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schRegNm)">
+                AND UPPER(tal.REQ_NM) LIKE CONCAT('%',UPPER(#{schRegNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schAccCorpNm)">
+                AND UPPER(tal.ACC_CORP_NM) LIKE CONCAT('%',UPPER(#{schAccCorpNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schAccDeptNm)">
+                AND UPPER(tal.ACC_DEPT_NM) LIKE CONCAT('%',UPPER(#{schAccDeptNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schAccNm)">
+                AND UPPER(tal.ACC_NM) LIKE CONCAT('%',UPPER(#{schAccNm}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schTit)">
+                AND UPPER(tal.TIT) LIKE CONCAT('%',UPPER(#{schTit}),'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schMngNo)">
+                AND UPPER(tal.MNG_NO) LIKE CONCAT('%',UPPER(#{schMngNo}),'%')
+            </if>
+        </where>
+    </sql>
+
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        SELECT tal.*
+        	, CASE tal.TP_CD 
+        		WHEN 'LMS_CT' THEN '계약검토' 
+        		WHEN 'LMS_CO' THEN '법률검토' 
+        		WHEN 'LMS_IJ' THEN '인장날인' 
+        		WHEN 'LMS_SE' THEN '사인관리' 
+        		WHEN 'LMS_JC' THEN '법인공동인증서' 
+        		WHEN 'LMS_DS' THEN '인장폐기' 
+        		WHEN 'LMS_SU' THEN '소송'         		
+        		WHEN 'CMS_RP' THEN '보고서'
+        		WHEN 'CMS_CK' THEN '점검'
+        		WHEN 'CMS_MT' THEN '일상감시'
+        		WHEN 'CMS_SC' THEN '자체점검'
+        		WHEN 'CMS_PV' THEN '사전승인'
+        		WHEN 'CMS_FT' THEN '자기매매'
+        		WHEN 'CMS_OS' THEN '특정증권'
+        		WHEN 'CMS_PB' THEN '서약서'
+        		WHEN 'CMS_AM' THEN '자금세탁방지'
+        		WHEN 'CMS_EU' THEN '교육'
+        		ELSE '기타' 
+        		END AS TP_CD_NM
+            , ROW_NUMBER() OVER(ORDER BY tal.ACC_DTE DESC) RN
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.countPrefix"/>
+        SELECT tal.LOG_UID
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <insert id="insert" parameterType="com.vertexid.paragon.security.SolAccLogDTO">
+        INSERT INTO T_SYS_ACC_LOG(
+            LOG_UID
+            , MNG_NO
+            , TIT
+            , REQ_CORP_CD
+            , REQ_CORP_NM
+            , REQ_DEPT_CD
+            , REQ_DEPT_NM
+            , REQ_ID
+            , REQ_NM
+            , ACC_CORP_CD
+            , ACC_CORP_NM
+            , ACC_DEPT_CD
+            , ACC_DEPT_NM
+            , ACC_ID
+            , ACC_NM
+            , ACC_DTE
+            , TP_CD
+        )VALUES(
+            #{logUid}
+            , #{mngNo}
+            , #{tit}
+            , #{reqCorpCd}
+            , #{reqCorpNm}
+            , #{reqDeptCd}
+            , #{reqDeptNm}
+            , #{reqId}
+            , #{reqNm}
+            , #{loginInfo.corpCd}
+            , #{loginInfo.corpNm}
+            , #{loginInfo.deptCd}
+            , #{loginInfo.deptNmKo}
+            , #{loginInfo.loginId}
+            , #{loginInfo.nmKo}
+            , NOW()
+            , #{tpCd}
+        )
+    </insert>
+
+</mapper>

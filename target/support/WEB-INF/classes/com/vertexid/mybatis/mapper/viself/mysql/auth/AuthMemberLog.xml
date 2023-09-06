@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- 권한변경 로그 Mapper -->
+<mapper namespace="com.vertexid.viself.auth.AuthMemberLog.mysql">
+    <insert id="insert" parameterType="com.vertexid.viself.auth.AuthMemberDTO">
+        INSERT INTO t_sys_auth_member_log(
+            LOG_UID
+            , MBR_ID
+            , AUTH_CONTENT
+            , REG_LOGIN_ID
+            , REG_DTE
+        ) SELECT
+            F_SYS_VUID() LOG_UID
+            , usr.LOGIN_ID MBR_ID
+            , (
+                CASE
+                    WHEN MBR.AUTH_CONTENT IS NULL THEN 'CMM_ISJ'
+                    ELSE CONCAT('CMM_ISJ,', MBR.AUTH_CONTENT)
+                END
+            ) AS AUTH_CONTENT
+            , #{loginInfo.loginId} REG_LOGIN_ID
+            , NOW() REG_DTE
+        FROM t_sys_user usr
+            LEFT OUTER JOIN (
+                SELECT MBR_ID
+                    , GROUP_CONCAT(AUTH_CD ORDER BY AUTH_CD SEPARATOR ',') AUTH_CONTENT
+                FROM t_sys_auth_member
+                WHERE MBR_TP_CD = 'USER'
+                GROUP BY MBR_ID
+            ) MBR
+                ON USR.LOGIN_ID = MBR.MBR_ID
+        <where>
+            AND usr.LOGIN_ID = #{mbrId}
+        </where>
+    </insert>
+</mapper>

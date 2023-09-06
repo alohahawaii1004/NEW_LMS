@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Configuration status="WARN">
+    <Properties>
+        <Property name="logNm">cms</Property>
+        <!--        <Property name="layoutPattern">%d [%t] %-5level %c(%M:%L) - %m%n</Property>-->
+        <Property name="layoutPattern">[%d][%p][%-l] - %m%n</Property>
+    </Properties>
+    <Appenders>
+        <!-- 콘솔 Appender -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${layoutPattern}"/>
+        </Console>
+        <!-- 롤링 파일 Appender: fileName 속성을 각자 환경에 맞게 변경 -->
+        <!--
+          ~ SizeBasedTriggeringPolicy size="10MB": 10MB 용량이 초과시 DefaultRolloverStrategy 정책만큼 넘버링
+          ~ TimeBasedTriggeringPolicy module="true" interval="1": 일별 로그 파일 생성
+          ~ DefaultRolloverStrategy max="500" fileIndex="min": 롤링 파일 500개 까지 생성
+          -->
+        <!--<RollingFile name="File" fileName="D:/IPRS/apps/logs/${logNm}.log" filePattern="D:/IPRS/apps/logs/${logNm}_%d{yyyy-MM-dd}_%i.log">
+            <PatternLayout pattern="${layoutPattern}" />
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10MB" />
+                <TimeBasedTriggeringPolicy module="true" interval="1" />
+            </Policies>
+            <DefaultRolloverStrategy max="500" fileIndex="min" />
+        </RollingFile>-->
+    </Appenders>
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+            <!--            <AppenderRef ref="File"/>-->
+        </Root>
+        <logger name="com.vertexid" level="debug" />
+        <logger name="org.apache" level="info" />
+        <logger name="org.springframework" level="info" />
+    </Loggers>
+</Configuration>

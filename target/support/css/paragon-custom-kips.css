@@ -1,0 +1,148 @@
+/*
+// ===================================================
+// Custom Style START
+// ---------------------------------------------------
+*/
+/* 입력폼 border 셋팅 모바일 */
+@media screen and (max-width: 575px) {
+	.particle-row .particle-label,
+	.particle-row .particle-form {
+		border-left: 0px !important;
+		border-top: 1px solid #dee2e6 !important;
+	}
+	.particle-row{
+		border: 0px !important;
+	}
+	.particle-row:last-child{
+		border-bottom: 1px solid #dee2e6 ;
+	}
+
+	.particle-inner .particle-label-inner,
+	.particle-inner .particle-form-inner {
+		border-left: 0px !important;
+		border-top: 1px solid #dee2e6 !important;
+	}
+	.particle-inner{
+		border: 0px !important;
+	}
+	.particle-inner:last-child{
+		border-bottom: 1px solid #dee2e6 ;
+	}
+
+}
+
+.particle-row{
+    border-top: 1px solid #dee2e6 ;
+}
+.particle-row:last-child{
+    border-bottom: 1px solid #dee2e6 ;
+}
+.particle-label{
+
+	/* bg-gray-light */
+    background-color: #f2f4f5;
+    color: #1f2d3d !important;
+
+/*     border-left: 1px solid #dee2e6 !important; */
+/*     border-right: 1px solid #dee2e6 !important; */
+
+    padding-top: calc(0.25rem + 1px);
+    padding-bottom: calc(0.25rem + 1px);
+    font-size: .825rem;
+    line-height: 1.5;
+    margin: 0px;
+    padding: 0.6rem !important;
+
+/*     text-align: right !important; */
+
+    font-weight: 600 !important;
+}
+.particle-form{
+
+    padding: 0.35rem !important;
+    font-size: .825rem;
+
+/* 	border-left: 1px solid #dee2e6 !important; */
+/*     border-right: 1px solid #dee2e6 !important; */
+}
+
+.particle-row .particle-label + .particle-form,
+.particle-row .particle-form + .particle-label {
+	border-left: 1px solid #dee2e6;
+}
+.particle-inner{
+	margin: 0px 2px;
+    border-top: 1px solid #dee2e6 ;
+}
+
+.particle-inner:last-child{
+	margin: 0px 2px;
+    border-bottom: 1px solid #dee2e6 ;
+}
+
+.particle-label-inner{
+	/* bg-gray-light */
+    background-color: #f7f7f7;
+    color: #1f2d3d !important;
+
+/*     border-left: 1px solid #dee2e6 !important; */
+/*     border-right: 1px solid #dee2e6 !important; */
+
+    padding-top: calc(0.25rem + 1px);
+    padding-bottom: calc(0.25rem + 1px);
+    font-size: .825rem;
+    line-height: 1.5;
+    margin: 0px;
+    padding: 0.6rem !important;
+
+/*     text-align: right !important; */
+
+    font-weight: 600 !important;
+}
+.particle-form-inner{
+
+    padding: 0.35rem !important;
+    font-size: .825rem;
+
+/* 	border-left: 1px solid #dee2e6 !important; */
+/*     border-right: 1px solid #dee2e6 !important; */
+}
+.particle-inner .particle-label-inner + .particle-form-inner,
+.particle-inner .particle-form-inner + .particle-label-inner {
+	border-left: 1px solid #dee2e6;
+}
+
+/* input,select */
+.particle-input{
+	/* form-control */
+	display: block;
+	width: 100%;
+	color: #495057;
+	background-color: #fff;
+	background-clip: padding-box;
+    border: 1px solid #ced4da;
+	box-shadow: inset 0 0 0 rgb(0 0 0 / 0%);
+    transition: border-color 0.15s ease-in-out,box-shadow 0.15s ease-in-out;
+
+	/* form-control-sm */
+	height: calc(1.5rem + 3px);
+    padding: 0.25rem 0.5rem;
+    font-size: .825rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+}
+/* checkbox,radio */
+.particle-check{
+	flex: 0 0 16.66667%;
+    font-weight: 400 !important;
+    font-size: .825rem;
+
+    display: inline-block;
+    padding-right: 7.5px;
+    padding-left: 7.5px;
+}
+
+.particle-no-validation{
+	width: 0.8rem;
+	display: inline-block;
+}

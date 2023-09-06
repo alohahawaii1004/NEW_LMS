@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2023 JaYu.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- Issue Mapper -->
+<mapper namespace="com.vertexid.support.issue.IssueMng.mysql">
+
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM t_issue_req ireq
+            LEFT OUTER JOIN t_issue_rslt irslt
+                ON ireq.issue_id = irslt.issue_id
+            left OUTER join t_support_sys_info tssi
+                on ireq.SYSTEM_ID  = tssi.SYSTEM_ID
+            left outer join t_sys_org tso
+                on ireq.ORG_ID = tso.ORG_ID
+            left outer join t_sys_user tsu
+                on ireq.RCV_ID = tsu.LOGIN_ID
+            LEFT OUTER JOIN (
+                SELECT rel_id, COUNT(*) cnt
+                FROM t_sys_comment
+                WHERE REL_TP_CD = 'ISSUE'
+                GROUP BY rel_id
+            ) cmt
+                ON ireq.issue_id = cmt.rel_id
+        <where>
+            <if test="#fn=isNotBlank, #fn(schOrgNm)">
+                AND tso.NM_KO LIKE CONCAT('%',#{schOrgNm},'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schSysNm)">
+                AND tssi.SYSTEM_NAME LIKE CONCAT('%',#{schSysNm},'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schFromReqDte)">
+                AND ireq.req_ymd <![CDATA[ >= ]]> DATE_FORMAT(#{schFromReqDte}, '%Y-%m-%d')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schToReqDte)">
+                AND ireq.req_ymd <![CDATA[ < ]]> DATE_ADD(DATE_FORMAT(#{schToReqDte}, '%Y-%m-%d'), INTERVAL 1 DAY)
+            </if>
+            <if test="#fn=isNotBlank, #fn(schIssueTpCd)">
+                AND IFNULL(IFNULL(irslt.RSLT_REAL_ISSUE_TP_CD, ireq.RCV_ISSUE_TP_CD) , ireq.REQ_ISSUE_TP_CD) = #{schIssueTpCd}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schIssueDomainCd)">
+                AND IFNULL(IFNULL(irslt.RSLT_REAL_ISSUE_DOMAIN_CD, ireq.RCV_ISSUE_DOMAIN_CD) , ireq.REQ_ISSUE_DOMAIN_CD) = #{schIssueDomainCd}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schIssueStuCd)">
+                AND ireq.ISSUE_STU_CD = #{schIssueStuCd}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schReqNo)">
+                AND ireq.req_no LIKE CONCAT('%',#{schReqNo},'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schReqUserNm)">
+                AND ireq.req_nm LIKE CONCAT('%',#{schReqUserNm},'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schIssueTitle)">
+                AND UPPER(ireq.REQ_ISSUE_TITLE) LIKE UPPER(CONCAT('%',#{schIssueTitle},'%'))
+            </if>
+            <if test="#fn=isNotBlank, #fn(schIssueContent)">
+                AND UPPER(ireq.REQ_ISSUE_CONTS) LIKE UPPER(CONCAT('%',#{schIssueContent},'%'))
+            </if>
+            <choose>
+                <when test='loginInfo.containsAuthorities("CMM_SYS,SM_ADMIN")'>
+                    AND 1=1
+                </when>
+                <when test='loginInfo.containsAuthorities("SM_MNG")'>
+                    AND ireq.SYSTEM_ID IN (
+                        SELECT SYSTEM_ID
+                        FROM t_support_sys_mgr
+                        WHERE LOGIN_ID = #{loginInfo.loginId}
+                    )
+                </when>
+                <otherwise>
+                    AND ireq.REQ_ID = #{loginInfo.loginId}
+                </otherwise>
+            </choose>
+            AND ireq.USE_YN = 'Y'
+        </where>
+
+    </sql>
+
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        SELECT ireq.issue_id
+            , ireq.ORG_ID
+            , tso.NM_KO ORG_NM
+            , ireq.SYSTEM_ID
+            , tssi.SYSTEM_NAME
+            , ireq.ISSUE_STU_CD
+            , F_SYS_CD_ABB_LANG('REQ_STATUS', ireq.ISSUE_STU_CD) issue_stu_nm
+            , IFNULL(IFNULL(irslt.RSLT_REAL_ISSUE_TP_CD, ireq.RCV_ISSUE_TP_CD) , ireq.REQ_ISSUE_TP_CD) issue_tp_cd
+            , F_SYS_CD_ABB_LANG('REQ_GUBUN', IFNULL(IFNULL(irslt.RSLT_REAL_ISSUE_TP_CD, ireq.RCV_ISSUE_TP_CD) , ireq.REQ_ISSUE_TP_CD)) issue_tp_nm
+            , ireq.REQ_ISSUE_TITLE
+            , ireq.REQ_NO
+            , ireq.REQ_NM
+            , tsu.NM_KO RCV_NM
+            , IFNULL(cmt.cnt, 0) cmt_cnt
+            , DATE_FORMAT(ireq.req_dte, '%Y-%m-%d') REQ_DTE
+            , date_format(ireq.RCV_DTE, '%Y-%m-%d') RCV_DTE
+            , date_format(irslt.CFM_DTE, '%Y-%m-%d') CFM_DTE
+            , ROW_NUMBER() OVER(ORDER BY ireq.req_dte DESC) RN
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.countPrefix"/>
+        SELECT ireq.issue_id
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <select id="getIssueInfo" parameterType="map" resultType="paramMap">
+        <include refid="Common.cmmFunction"/>
+        SELECT ireq.issue_id
+             , ireq.ORG_ID
+             , tso.NM_KO ORG_NM
+             , ireq.SYSTEM_ID
+             , tssi.SYSTEM_NAME
+             , ireq.ISSUE_STU_CD
+             , F_SYS_CD_ABB_LANG('REQ_STATUS', ireq.ISSUE_STU_CD) issue_stu_nm
+             , IFNULL(IFNULL(irslt.RSLT_REAL_ISSUE_TP_CD, ireq.RCV_ISSUE_TP_CD) , ireq.REQ_ISSUE_TP_CD) issue_tp_cd
+             , F_SYS_CD_ABB_LANG('REQ_GUBUN', IFNULL(IFNULL(irslt.RSLT_REAL_ISSUE_TP_CD, ireq.RCV_ISSUE_TP_CD) , ireq.REQ_ISSUE_TP_CD)) issue_tp_nm
+             , IFNULL(IFNULL(irslt.RSLT_REAL_ISSUE_DOMAIN_CD, ireq.RCV_ISSUE_DOMAIN_CD) , ireq.REQ_ISSUE_DOMAIN_CD) issue_domain_cd
+             , F_SYS_CD_ABB_LANG('REQ_BUNYA', IFNULL(IFNULL(irslt.RSLT_REAL_ISSUE_DOMAIN_CD, ireq.RCV_ISSUE_DOMAIN_CD) , ireq.REQ_ISSUE_DOMAIN_CD)) issue_domain_nm
+             , ireq.REQ_ISSUE_TITLE
+             , ireq.REQ_NO
+             , ireq.REQ_ID
+             , ireq.REQ_NM
+             , tsu.NM_KO RCV_NM
+             , ireq.RCV_EXP_MANDAY
+             , irslt.RSLT_REAL_MANDAY
+             , IFNULL(IFNULL(irslt.RSLT_REAL_MANDAY, F_TOTAL_WEEKDAYS(ireq.RCV_DTE,IFNULL(irslt.RSLT_DTE, NOW()))), ireq.RCV_EXP_MANDAY) MANDAY
+             , irslt.cfm_tp_cd
+             , F_SYS_CD_ABB_LANG('REQ_STATUS', irslt.cfm_tp_cd) cfm_tp_nm
+             , date_format(ireq.req_dte, '%Y-%m-%d') STR_REQ_DTE
+             , date_format(ireq.req_END_dte, '%Y-%m-%d') STR_REQ_END_DTE
+             , date_format(ireq.RCV_DTE, '%Y-%m-%d') STR_RCV_DTE
+             , date_format(ireq.SCHEDUL_END_DTE, '%Y-%m-%d') STR_SCHEDUL_END_DTE
+             , date_format(irslt.RSLT_DTE, '%Y-%m-%d') STR_RSLT_DTE
+             , date_format(irslt.CFM_DTE, '%Y-%m-%d') STR_CFM_DTE
+             , ireq.req_issue_conts
+             , ireq.rcv_comment
+             , irslt.RSLT_RPORT
+             , irslt.cfm_comment
+             , irslt.cfm_svc_val
+             , CASE
+                    WHEN ireq.req_id = #{loginInfo.loginId} THEN 'REQ'
+                    ELSE 'NONE'
+             END V_TP1_CD
+             , CASE
+                 WHEN ireq.rcv_id = #{loginInfo.loginId} OR (SELECT COUNT(*) FROM t_support_sys_mgr WHERE system_id = ireq.SYSTEM_ID AND LOGIN_ID = #{loginInfo.loginId} ) > 0 THEN 'RCV'
+                 ELSE 'NONE'
+             END V_TP2_CD
+        FROM t_issue_req ireq
+            LEFT OUTER JOIN t_issue_rslt irslt
+                ON ireq.issue_id = irslt.issue_id
+            left OUTER join t_support_sys_info tssi
+                on ireq.SYSTEM_ID  = tssi.SYSTEM_ID
+            left outer join t_sys_org tso
+                on ireq.ORG_ID = tso.ORG_ID
+            left outer join t_sys_user tsu
+                on ireq.RCV_ID = tsu.LOGIN_ID
+        <where>
+            AND ireq.issue_id = #{issueId}
+            AND ireq.USE_YN = 'Y'
+        </where>
+    </select>
+
+    <select id="getIssueReqMailInfo" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT ireq.REQ_NO
+            , ireq.REQ_ISSUE_TITLE
+            , ireq.REQ_NM MAIL_NM
+            , ireq.REQ_EMAIL EMAIL
+        FROM t_issue_req ireq
+        <where>
+            AND ireq.issue_id = #{issueId}
+            AND ireq.REQ_EMAIL IS NOT NULL
+        </where>
+    </select>
+
+    <select id="getIssueMgrMailInfo" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT ireq.REQ_NO
+            , ireq.REQ_ISSUE_TITLE
+            , usr.NM_KO MAIL_NM
+            , usr.EMAIL EMAIL
+        FROM t_sys_user usr
+            INNER JOIN t_support_sys_mgr mgr
+                ON usr.LOGIN_ID = mgr.LOGIN_ID
+            INNER JOIN t_issue_req ireq
+                ON mgr.SYSTEM_ID = ireq.SYSTEM_ID
+        <where>
+            AND ireq.issue_id = #{issueId}
+            AND mgr.MAIL_SND_YN = 'Y'
+            AND usr.EMAIL IS NOT NULL
+        </where>
+    </select>
+
+    <select id="getStatsData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT
+            SUM(CASE WHEN ireq.ISSUE_STU_CD = '10' THEN 1 ELSE 0 END) REQ_CNT
+            , SUM(CASE WHEN ireq.ISSUE_STU_CD = '50' THEN 1 ELSE 0 END) RCV_CNT
+            , SUM(CASE WHEN ireq.ISSUE_STU_CD = '80' THEN 1 ELSE 0 END) RSLT_CNT
+            , SUM(CASE WHEN ireq.ISSUE_STU_CD = '90' THEN 1 ELSE 0 END) END_CNT
+            , SUM(CASE WHEN ireq.ISSUE_STU_CD = '91' THEN 1 ELSE 0 END) RJT_CNT
+        FROM t_issue_req ireq
+        <where>
+            <choose>
+                <when test='loginInfo.containsAuthorities("CMM_SYS,SM_ADMIN")'>
+                    AND 1=1
+                </when>
+                <when test='loginInfo.containsAuthorities("SM_MNG")'>
+                    AND ireq.SYSTEM_ID IN (
+                    SELECT SYSTEM_ID
+                    FROM t_support_sys_mgr
+                    WHERE LOGIN_ID = #{loginInfo.loginId}
+                    )
+                </when>
+                <otherwise>
+                    AND ireq.REQ_ID = #{loginInfo.loginId}
+                </otherwise>
+            </choose>
+            AND ireq.USE_YN = 'Y'
+        </where>
+    </select>
+</mapper>

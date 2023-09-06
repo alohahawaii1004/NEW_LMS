@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2023 JaYu.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- SM System Manager Mapper -->
+<mapper namespace="com.vertexid.support.system.SysMgrMng.mariadb">
+
+    <sql id="orderBy">
+        <include refid="Common.cmmFunction"/>
+        <choose>
+            <when test='#fn=isNotBlank, #fn(sort)'>
+                <foreach collection="sorts" index="idx" item="itm" separator=",">
+                    <if test='itm.equals("loginId")'>smgr.LOGIN_ID</if>
+                    <if test='itm.equals("mgrNm")'>smgr.MGR_NM</if>
+                    <if test='itm.equals("mainCnt")'>smgr.main_cnt</if>
+                    <if test='itm.equals("subCnt")'>smgr.sub_cnt</if>
+                    <if test='itm.equals("ttlCnt")'>smgr.TTL_CNT</if>
+                    <choose>
+                        <when test='orders[idx].equals("desc")'>DESC</when>
+                        <otherwise>ASC</otherwise>
+                    </choose>
+                </foreach>
+            </when>
+            <otherwise>
+                smgr.MGR_NM
+            </otherwise>
+        </choose>
+    </sql>
+
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM (
+            SELECT usr.LOGIN_ID
+                , usr.USE_YN
+                , usr.NM_KO MGR_NM
+                , SUM(case when PRIORITY = 1 then 1 else 0 END) main_cnt
+                , SUM(case when PRIORITY = 2 then 1 else 0 END) sub_cnt
+                , COUNT(PRIORITY) TTL_CNT
+            FROM t_sys_user usr
+                left OUTER JOIN t_support_sys_mgr mgr
+                    ON mgr.LOGIN_ID = usr.LOGIN_ID
+                INNER JOIN (
+                    SELECT mbr.MBR_ID
+                        , group_concat(CAST(acd.AUTH_CD AS VARCHAR(4000)) ORDER BY acd.ORD_NO, acd.AUTH_CD SEPARATOR ',') AS AUTH_CD
+                    FROM T_SYS_AUTH_MEMBER mbr
+                        INNER JOIN T_SYS_AUTH_CD acd
+                            ON mbr.AUTH_CD = acd.AUTH_CD
+                    WHERE mbr.MBR_TP_CD = 'USER'
+                        AND acd.USE_YN = 'Y'
+                        AND acd.AUTH_CD IN ('SM_MNG','SM_ADMIN')
+                    GROUP BY mbr.MBR_ID
+                ) uath
+                    ON usr.LOGIN_ID = uath.MBR_ID
+            <where>
+                <if test="#fn=isNotBlank, #fn(systemId)">
+                    AND usr.LOGIN_ID NOT IN (
+                        SELECT LOGIN_ID
+                        FROM t_support_sys_mgr
+                        WHERE SYSTEM_ID = #{systemId}
+                    )
+                </if>
+                <if test="#fn=isNotBlank, #fn(schUseYn)">
+                    AND usr.USE_YN = #{schUseYn}
+                </if>
+                <if test="#fn=isNotBlank, #fn(schMgrNm)">
+                    AND UPPER(usr.NM_KO) LIKE CONCAT('%', UPPER(#{schMgrNm}), '%')
+                </if>
+            </where>
+            GROUP BY usr.LOGIN_ID, usr.USE_YN, usr.NM_KO
+        ) smgr
+    </sql>
+
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        SELECT smgr.LOGIN_ID
+            , smgr.USE_YN
+            , smgr.MGR_NM
+            , smgr.main_cnt
+            , smgr.sub_cnt
+            , smgr.TTL_CNT
+            , ROW_NUMBER() OVER(ORDER BY <include refid="orderBy"/> ) RN
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.countPrefix"/>
+        SELECT smgr.LOGIN_ID
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <select id="getMgrList" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        SELECT mgr.PRIORITY
+        , mgr.MAIL_SND_YN
+        , usr.LOGIN_ID
+        , usr.USE_YN
+        , usr.NM_KO
+        FROM t_support_sys_mgr mgr
+            INNER JOIN t_sys_user usr
+                ON mgr.LOGIN_ID = usr.LOGIN_ID
+        <where>
+            <if test="#fn=isNotBlank, #fn(systemId)">
+                AND mgr.SYSTEM_ID = #{systemId}
+            </if>
+            <if test="#fn=isNotBlank, #fn(loginId)">
+                AND mgr.LOGIN_ID = #{loginId}
+            </if>
+        </where>
+        ORDER BY mgr.PRIORITY, usr.NM_KO
+    </select>
+
+    <select id="loadData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        <![CDATA[
+        SELECT
+            smgr.PRIORITY
+            , smgr.MAIL_SND_YN
+            , usr.USE_YN
+            , usr.EMAIL
+            , usr.LOGIN_ID
+            , usr.NM_KO MGR_NM
+            , smsys.SYSTEM_ID
+            , smsys.ORG_ID
+            , org.NM_KO ORG_NM
+            , smsys.SYSTEM_NAME
+            , smsys.PRODUCT_TP_CD
+            , F_SYS_CD_LANG(smsys.PRODUCT_TP_CD) PRODUCT_TP_NM
+            , smsys.SM_STARTDT
+            , DATE_FORMAT(smsys.SM_STARTDT, '%Y-%m-%d') sm_st_dte
+            , smsys.SM_ENDDT
+            , DATE_FORMAT(smsys.SM_ENDDT, '%Y-%m-%d') sm_ed_dte
+            , CONCAT(DATE_FORMAT(smsys.SM_STARTDT, '%Y-%m-%d'), '~', DATE_FORMAT(smsys.SM_ENDDT, '%Y-%m-%d')) SUPPORT_DATE
+            , (CASE WHEN DATEDIFF(smsys.SM_ENDDT, NOW()) < 0 THEN 'Y' ELSE 'N' END ) EXP_YN
+            , DATEDIFF(smsys.SM_ENDDT, NOW()) RM_SM_DAY
+            , '' SYS_MNGS
+            , smsys.SYS_DESC
+            , smsys.USE_YN SYS_USE_YN
+        ]]>
+        FROM t_support_sys_mgr smgr
+            INNER JOIN t_support_sys_info smsys
+                ON smgr.SYSTEM_ID = smsys.SYSTEM_ID
+            INNER JOIN t_sys_user usr
+                ON smgr.LOGIN_ID = usr.LOGIN_ID
+            LEFT OUTER JOIN t_sys_org org
+                ON usr.ORG_ID = org.ORG_ID
+        <where>
+            AND smsys.SYSTEM_ID = #{systemId}
+            AND smgr.LOGIN_ID = #{loginId}
+        </where>
+    </select>
+
+    <select id="getData" parameterType="map" resultType="com.vertexid.support.system.SysMgrDTO">
+        SELECT smgr.SYSTEM_ID
+            , smgr.LOGIN_ID
+            , smgr.PRIORITY
+            , smgr.MAIL_SND_YN
+        FROM t_support_sys_mgr smgr
+        <where>
+            AND smgr.SYSTEM_ID = #{systemId}
+            AND smgr.LOGIN_ID = #{loginId}
+        </where>
+    </select>
+
+    <select id="getNewSystemId" resultType="string">
+        SELECT F_SYS_SYSTEM_ID() AS SYSTEM_ID
+    </select>
+
+    <insert id="insert" parameterType="com.vertexid.support.system.SysMgrDTO">
+        INSERT INTO t_support_sys_mgr(
+            SYSTEM_ID
+            , LOGIN_ID
+            , PRIORITY
+            , MAIL_SND_YN
+            , REG_DTE
+            , REG_LOGIN_ID
+            , UPT_DTE
+            , UPT_LOGIN_ID
+        )VALUES(
+            #{systemId}
+            , #{loginId}
+            , 2
+            , 'Y'
+            , NOW()
+            , #{loginInfo.loginId}
+            , NOW()
+            , #{loginInfo.loginId}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.vertexid.support.system.SysMgrDTO">
+        UPDATE t_support_sys_mgr
+        SET UPT_DTE = NOW()
+            , UPT_LOGIN_ID = #{loginInfo.loginId}
+            , PRIORITY = #{priority}
+            , MAIL_SND_YN = #{mailSndYn}
+        <where>
+            AND SYSTEM_ID = #{systemId}
+            AND LOGIN_ID = #{loginId}
+        </where>
+    </update>
+
+    <delete id="delete" parameterType="com.vertexid.support.system.SysMgrDTO">
+        DELETE FROM t_support_sys_mgr
+        <where>
+            AND SYSTEM_ID = #{systemId}
+            AND LOGIN_ID = #{loginId}
+        </where>
+    </delete>
+
+</mapper>

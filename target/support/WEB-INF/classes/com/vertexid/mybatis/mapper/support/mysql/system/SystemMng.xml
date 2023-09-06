@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2023 JaYu.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!-- SM System Mapper -->
+<mapper namespace="com.vertexid.support.system.SystemMng.mysql">
+    <sql id="fromNWhereConditions">
+        <include refid="Common.cmmFunction"/>
+        FROM t_support_sys_info smsys
+            INNER JOIN t_sys_org org
+                ON smsys.ORG_ID = org.ORG_ID
+        <where>
+            <if test="#fn=isNotBlank, #fn(schOrgNm)">
+                AND org.NM_KO LIKE CONCAT('%',#{schOrgNm},'%')
+            </if>
+            <if test="#fn=isNotBlank, #fn(schUseYn)">
+                AND smsys.USE_YN = #{schUseYn}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schPrdTpCd)">
+                AND smsys.PRODUCT_TP_CD = #{schPrdTpCd}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schOrgId)">
+                AND org.org_id = #{schOrgId}
+            </if>
+            <if test="#fn=isNotBlank, #fn(schSysNm)">
+                AND UPPER(smsys.SYSTEM_NAME) LIKE UPPER(CONCAT('%', #{schSysNm}, '%'))
+            </if>
+            <if test="#fn=isNotBlank, #fn(schMngNm)">
+                AND smsys.SYSTEM_ID IN (
+                    SELECT mgr.SYSTEM_ID
+                    FROM t_support_sys_mgr mgr
+                        INNER JOIN t_sys_user usr
+                            ON mgr.LOGIN_ID = usr.LOGIN_ID
+                    WHERE usr.NM_KO LIKE CONCAT('%', #{schMngNm}, '%')
+                )
+            </if>
+            <if test="#fn=isNotBlank, #fn(schSvcYn)">
+                AND (CASE WHEN (DATEDIFF(smsys.SM_ENDDT, NOW()) <![CDATA[ < 0 ]]> AND DATEDIFF( NOW(), smsys.SM_STARTDT) <![CDATA[ >= 0 ]]>)
+                    OR smsys.USE_YN = 'N' OR org.USE_YN = 'N' THEN 'N' ELSE 'Y' END ) = #{schSvcYn}
+            </if>
+            <choose>
+                <when test='loginInfo.containsAuthorities("CMM_SYS,SM_ADMIN")'>
+                    AND 1=1
+                </when>
+                <otherwise>
+                    AND (smsys.SYSTEM_ID IN (
+                        SELECT SYSTEM_ID
+                        FROM t_support_sys_mgr
+                        WHERE LOGIN_ID = #{loginInfo.loginId}
+                    ) OR (
+                        smsys.SYSTEM_ID IN (
+                        SELECT SYSTEM_ID
+                        FROM t_support_sys_user
+                        WHERE LOGIN_ID = #{loginInfo.loginId}
+                    )))
+                </otherwise>
+            </choose>
+        </where>
+    </sql>
+
+    <select id="getListPerPage" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.pagingPrefix"/>
+        <![CDATA[
+        SELECT smsys.SYSTEM_ID
+            , smsys.ORG_ID
+            , org.NM_KO ORG_NM
+            , smsys.SYSTEM_NAME
+            , smsys.PRODUCT_TP_CD
+            , F_SYS_CD_LANG(smsys.PRODUCT_TP_CD) PRODUCT_TP_NM
+            , smsys.SM_STARTDT
+            , DATE_FORMAT(smsys.SM_STARTDT, '%Y-%m-%d') sm_st_dte
+            , smsys.SM_ENDDT
+            , DATE_FORMAT(smsys.SM_ENDDT, '%Y-%m-%d') sm_ed_dte
+            , (CASE WHEN DATEDIFF(smsys.SM_ENDDT, NOW()) < 0 THEN 'Y' ELSE 'N' END ) EXP_YN
+            , DATEDIFF(smsys.SM_ENDDT, NOW()) RM_SM_DAY
+            , '' SYS_MNGS
+            , smsys.USE_YN
+            , ROW_NUMBER() OVER(ORDER BY org.nm_ko, smsys.SYSTEM_NAME) RN
+        ]]>
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.pagingPostfix"/>
+    </select>
+
+    <select id="countData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.countPrefix"/>
+        SELECT smsys.SYSTEM_ID
+        <include refid="fromNWhereConditions"/>
+        <include refid="Common.countPostfix"/>
+    </select>
+
+    <select id="getUseSystemList" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT smsys.SYSTEM_ID
+             , smsys.SYSTEM_NAME
+        FROM t_support_sys_info smsys
+            INNER JOIN t_support_sys_user susr
+                ON smsys.SYSTEM_ID = susr.SYSTEM_ID
+        WHERE susr.LOGIN_ID = #{loginInfo.loginId}
+    </select>
+
+    <select id="loadData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        <include refid="Common.cmmFunction"/>
+        <![CDATA[
+        SELECT smsys.SYSTEM_ID
+            , smsys.ORG_ID
+            , org.NM_KO ORG_NM
+            , smsys.SYSTEM_NAME
+            , smsys.PRODUCT_TP_CD
+            , F_SYS_CD_LANG(smsys.PRODUCT_TP_CD) PRODUCT_TP_NM
+            , smsys.SM_STARTDT
+            , DATE_FORMAT(smsys.SM_STARTDT, '%Y-%m-%d') sm_st_dte
+            , smsys.SM_ENDDT
+            , DATE_FORMAT(smsys.SM_ENDDT, '%Y-%m-%d') sm_ed_dte
+            , CONCAT(DATE_FORMAT(smsys.SM_STARTDT, '%Y-%m-%d'), '~', DATE_FORMAT(smsys.SM_ENDDT, '%Y-%m-%d')) SUPPORT_DATE
+            , (CASE WHEN DATEDIFF(smsys.SM_ENDDT, NOW()) < 0 THEN 'Y' ELSE 'N' END ) EXP_YN
+            , DATEDIFF(smsys.SM_ENDDT, NOW()) RM_SM_DAY
+            , '' SYS_MNGS
+            , smsys.SYS_DESC
+            , smsys.USE_YN
+        ]]>
+        FROM t_support_sys_info smsys
+            INNER JOIN t_sys_org org
+                ON smsys.ORG_ID = org.ORG_ID
+        <where>
+            <choose>
+                <when test="#fn=isNotBlank, #fn(systemId)">
+                    AND smsys.SYSTEM_ID = #{systemId}
+                </when>
+                <otherwise>
+                    AND 1=2
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+    <select id="getNewSystemId" resultType="string">
+        SELECT F_SYS_SYSTEM_ID() AS SYSTEM_ID
+    </select>
+
+    <insert id="insertMas" parameterType="com.vertexid.support.system.SystemDTO">
+        INSERT INTO t_support_sys_info(
+            SYSTEM_ID
+            , ORG_ID
+            , SYSTEM_NAME
+            , PRODUCT_TP_CD
+            , SYSTEM_URL
+            , INTRODUCE_DT
+            , SM_STARTDT
+            , SM_ENDDT
+            , USE_YN
+            , SYS_DESC
+            , REG_DTE
+            , REG_LOGIN_ID
+            , UPT_DTE
+            , UPT_LOGIN_ID
+        )VALUES(
+            #{systemId}
+            , #{orgId}
+            , #{systemName}
+            , #{productTpCd}
+            , #{systemUrl}
+            , #{introduceDt}
+            , #{smStartdt}
+            , #{smEnddt}
+            , 'Y'
+            , #{sysDesc}
+            , NOW()
+            , #{loginInfo.loginId}
+            , NOW()
+            , #{loginInfo.loginId}
+        )
+    </insert>
+
+    <update id="updateMas" parameterType="com.vertexid.support.system.SystemDTO">
+        UPDATE t_support_sys_info
+        SET    UPT_DTE = NOW()
+            , UPT_LOGIN_ID = #{loginInfo.loginId}
+            , ORG_ID = #{orgId}
+            , SYSTEM_NAME = #{systemName}
+            , PRODUCT_TP_CD = #{productTpCd}
+            , SYSTEM_URL = #{systemUrl}
+            , INTRODUCE_DT = #{introduceDt}
+            , SM_STARTDT = #{smStartdt}
+            , SM_ENDDT = #{smEnddt}
+            , USE_YN = 'Y'
+            , SYS_DESC = #{sysDesc}
+        <where>
+            AND SYSTEM_ID = #{systemId}
+        </where>
+    </update>
+
+    <select id="getMetaData" parameterType="map" resultType="paramMap" fetchSize="1000">
+        SELECT org_desc
+        FROM t_sys_org_meta
+        <where>
+            AND org_id = #{orgId}
+        </where>
+    </select>
+
+    <insert id="insertMeta" parameterType="com.vertexid.support.customer.CustomerDTO">
+        INSERT INTO t_sys_org_meta(
+            ORG_ID
+        , ORG_DESC
+        , REG_DTE
+        , REG_LOGIN_ID
+        , UPT_DTE
+        , UPT_LOGIN_ID
+        )VALUES(
+                   #{orgId}
+               , #{orgDesc}
+               , NOW()
+               , #{loginInfo.loginId}
+               , NOW()
+               , #{loginInfo.loginId}
+               )
+    </insert>
+
+    <update id="updateMeta" parameterType="com.vertexid.support.customer.CustomerDTO">
+        UPDATE t_sys_org_meta
+        SET    UPT_DTE = NOW()
+        , UPT_LOGIN_ID = #{loginInfo.loginId}
+        , ORG_DESC = #{orgDesc}
+        <where>
+            AND org_id = #{orgId}
+        </where>
+    </update>
+
+</mapper>

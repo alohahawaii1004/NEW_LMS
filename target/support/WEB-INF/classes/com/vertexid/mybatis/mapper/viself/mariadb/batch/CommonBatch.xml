@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ~ Copyright 2022 JAYU.space
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<!--
+  ~ Description:
+  ~     Batch job 공용
+  -->
+<mapper namespace="com.vertexid.viself.batch.CommonBatch.mariadb">
+    <select id="getBatchInfo" parameterType="map" resultType="paramMap">
+        SELECT j.*
+            , TIMESTAMPDIFF(HOUR , j.JOB_ST_DTIME, now()) h_diff
+         FROM t_sys_batch_status j
+        WHERE j.JOB_NM = #{jobName}
+    </select>
+
+    <insert id="insertBatch" parameterType="com.vertexid.viself.batch.BatchJobDTO">
+        INSERT INTO t_sys_batch_status(
+            JOB_NM, JOB_ST_DTIME
+        )VALUES(
+            #{jobName}, NOW()
+        )
+    </insert>
+
+    <delete id="deleteBatch"  parameterType="com.vertexid.viself.batch.BatchJobDTO">
+        DELETE FROM t_sys_batch_status
+        WHERE JOB_NM = #{jobName}
+    </delete>
+</mapper>

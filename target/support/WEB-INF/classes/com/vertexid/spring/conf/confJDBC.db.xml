@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <description>
+        <!--
+          ~ Copyright 2022 JAYU.space
+          ~
+          ~ Licensed under the Apache License, Version 2.0 (the "License");
+          ~ you may not use this file except in compliance with the License.
+          ~ You may obtain a copy of the License at
+          ~
+          ~ http://www.apache.org/licenses/LICENSE-2.0
+          ~
+          ~ Unless required by applicable law or agreed to in writing, software
+          ~ distributed under the License is distributed on an "AS IS" BASIS,
+          ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+          ~ See the License for the specific language governing permissions and
+          ~ limitations under the License.
+          -->
+        JDBC datasource 설정
+        
+    </description>
+
+    <!-- JDBC datasource 설정 -->
+    <!--
+               class="org.apache.commons.dbcp.BasicDataSource"
+     -->
+    <bean id="dataSource"
+          class="org.apache.tomcat.dbcp.dbcp2.BasicDataSource"
+          destroy-method="close">
+        <property name="driverClassName"
+                  value="#{cmmProperties['db.base.driverClass']}"/>
+        <property name="url" value="#{cmmProperties['db.base.url']}"/>
+        <property name="username" value="#{cmmProperties['db.base.username']}"/>
+        <property name="password" value="#{cmmProperties['db.base.password']}"/>
+
+        <!-- DB Connection Pool 초기 갯수 -->
+        <property name="initialSize" value="10"/>
+        <!-- Pool 최대 갯수 -->
+<!--         <property name="maxActive" value="10"/> -->
+        <property name="maxTotal" value="10"/>
+        <!-- Pool 최소 아이들 갯수 -->
+        <property name="minIdle" value="10"/>
+        <!-- Pool 최대 대기 시간(ms) -->
+<!--         <property name="maxWait" value="10000"/> -->
+        <property name="maxWaitMillis" value="10000"/> 
+
+        <!--
+          - SQL 길이(statement 객체 크기) x pool 갯수 x connection 갯수 = 메모리사용량
+          - [주의]
+          -  실메모리 < 메모리사용량 = Out of memory
+          -->
+        <!-- PreparedStatements Pool 사용여부 -->
+        <property name="poolPreparedStatements" value="true"/>
+        <!-- 최대 PreparedStatements 갯수 -->
+        <property name="maxOpenPreparedStatements" value="10"/>
+
+        <!-- 연결확인용 SQL: Oracle -->
+<!--         <property name="validationQuery" value="SELECT 1 FROM DUAL"/> -->
+        <!-- 연결확인용 SQL: MSSQL, MySQL, MariaDB, PostgreSQL -->
+        <property name="validationQuery" value="SELECT 1 "/>
+        <property name="testOnBorrow" value="false"/>
+        <property name="testOnReturn" value="false"/>
+        <!-- 유휴일때 테스트 진행 여부: true (CUBRID 사용시는 false)-->
+        <property name="testWhileIdle" value="true"/>
+        <!-- 연결유효여부 검사기간(ms) -->
+<!--        <property name="timeBetweenEvictionRunsMillis" value="-1"/>-->
+    </bean>
+</beans>
